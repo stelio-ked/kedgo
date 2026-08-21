@@ -1,0 +1,335 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --color-ked-navy: #1E3A5F;
+  --color-ked-navy-deep: #162B48;
+  --color-ked-terracotta: #D95D39;
+  --color-ked-terracotta-warm: #C86446;
+  --color-ked-sand: #FAF7F0;
+  --color-ked-sand-warm: #F4F0E6;
+  --color-ked-emerald: #2A9D8F;
+}
+
+body {
+  background-color: #f8fafc;
+  font-family: var(--font-sans);
+  color: #0f172a;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+/* ===== Soft & Sophisticated Dark Theme ===== */
+body.dark-theme {
+  background-color: #0B1320;
+  color: #E2E8F0;
+}
+
+/* Dark mode main surfaces & cards */
+body.dark-theme [class*="bg-white"] {
+  background-color: #131F33 !important;
+  color: #F8FAFC !important;
+  border-color: #1E314F !important;
+}
+
+/* Secondary nested surfaces & flight card blocks */
+body.dark-theme [class*="bg-slate-50"],
+body.dark-theme [class*="bg-slate-100"],
+body.dark-theme [class*="bg-gray-50"],
+body.dark-theme [class*="bg-gray-100"] {
+  background-color: #0F1A2C !important;
+  border-color: #1F3354 !important;
+}
+
+body.dark-theme [class*="bg-slate-200"],
+body.dark-theme [class*="bg-gray-200"] {
+  background-color: #1A2B45 !important;
+  border-color: #274068 !important;
+}
+
+body.dark-theme [class*="bg-slate-300"],
+body.dark-theme [class*="bg-gray-300"] {
+  background-color: #233758 !important;
+}
+
+/* Colored subtle chips / badges in Dark Mode */
+body.dark-theme [class*="bg-indigo-50"] {
+  background-color: #18223B !important;
+  border-color: #312E81 !important;
+}
+
+body.dark-theme [class*="bg-emerald-50"],
+body.dark-theme [class*="bg-green-50"] {
+  background-color: #064E3B !important;
+  border-color: #047857 !important;
+}
+
+body.dark-theme [class*="bg-amber-50"] {
+  background-color: #451A03 !important;
+  border-color: #78350F !important;
+}
+
+body.dark-theme [class*="bg-rose-50"],
+body.dark-theme [class*="bg-red-50"] {
+  background-color: #4C0519 !important;
+  border-color: #881337 !important;
+}
+
+body.dark-theme [class*="bg-orange-50"] {
+  background-color: #431407 !important;
+  border-color: #7C2D12 !important;
+}
+
+/* Dark mode typography contrast */
+body.dark-theme [class*="text-slate-900"],
+body.dark-theme [class*="text-slate-800"],
+body.dark-theme [class*="text-gray-900"],
+body.dark-theme [class*="text-gray-800"] {
+  color: #F8FAFC !important;
+}
+
+body.dark-theme [class*="text-slate-700"],
+body.dark-theme [class*="text-slate-650"],
+body.dark-theme [class*="text-slate-600"],
+body.dark-theme [class*="text-gray-700"],
+body.dark-theme [class*="text-gray-600"] {
+  color: #E2E8F0 !important;
+}
+
+body.dark-theme [class*="text-slate-550"],
+body.dark-theme [class*="text-slate-500"],
+body.dark-theme [class*="text-slate-450"],
+body.dark-theme [class*="text-slate-400"],
+body.dark-theme [class*="text-gray-500"],
+body.dark-theme [class*="text-gray-400"] {
+  color: #94A3B8 !important;
+}
+
+/* Text colored accents in Dark Mode for high readability */
+body.dark-theme [class*="text-indigo-600"],
+body.dark-theme [class*="text-indigo-650"],
+body.dark-theme [class*="text-indigo-700"] {
+  color: #A5B4FC !important;
+}
+
+body.dark-theme [class*="text-rose-600"],
+body.dark-theme [class*="text-rose-700"] {
+  color: #FDA4AF !important;
+}
+
+body.dark-theme [class*="text-emerald-600"],
+body.dark-theme [class*="text-emerald-700"],
+body.dark-theme [class*="text-green-700"] {
+  color: #6EE7B7 !important;
+}
+
+body.dark-theme [class*="text-amber-600"],
+body.dark-theme [class*="text-amber-700"] {
+  color: #FCD34D !important;
+}
+
+/* Dark mode borders & dividers */
+body.dark-theme [class*="border-slate-"],
+body.dark-theme [class*="border-gray-"] {
+  border-color: #1E314F !important;
+}
+
+body.dark-theme .divide-slate-50 > :not([hidden]) ~ :not([hidden]),
+body.dark-theme .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
+body.dark-theme .divide-slate-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #1E314F !important;
+}
+
+/* Dark mode inputs & controls */
+body.dark-theme input:not([type="checkbox"]):not([type="radio"]),
+body.dark-theme select,
+body.dark-theme textarea {
+  background-color: #0E1726 !important;
+  border-color: #223759 !important;
+  color: #F8FAFC !important;
+}
+
+body.dark-theme select option {
+  background-color: #0E1726 !important;
+  color: #F8FAFC !important;
+}
+
+/* Dark mode hover states */
+body.dark-theme [class*="hover:bg-slate-50"]:hover,
+body.dark-theme [class*="hover:bg-slate-100"]:hover,
+body.dark-theme [class*="hover:bg-gray-50"]:hover {
+  background-color: #16243A !important;
+}
+
+/* Header & Protected elements */
+body.dark-theme header {
+  background-color: #162B48 !important;
+  border-color: #0E1A2C !important;
+  color: #ffffff !important;
+}
+
+/* Protect images and logos from distortion */
+body.dark-theme img,
+body.dark-theme svg,
+body.dark-theme video,
+body.dark-theme iframe {
+  filter: none !important;
+}
+
+/* ===== AI Generation Animations ===== */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.7); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes scaleInBounce {
+  0%   { opacity: 0; transform: scale(0.3); }
+  50%  { opacity: 1; transform: scale(1.08); }
+  70%  { transform: scale(0.96); }
+  100% { transform: scale(1); }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-3px); }
+  20%, 40%, 60%, 80% { transform: translateX(3px); }
+}
+
+@keyframes wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-8deg); }
+  75% { transform: rotate(8deg); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes gradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@keyframes progressPulse {
+  0% { width: 5%; opacity: 0.7; }
+  50% { width: 70%; opacity: 1; }
+  80% { width: 88%; opacity: 0.9; }
+  100% { width: 95%; opacity: 0.7; }
+}
+
+@keyframes orbFloat1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(12px, -18px) scale(1.15); }
+  66% { transform: translate(-8px, -8px) scale(0.9); }
+}
+
+@keyframes orbFloat2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(-14px, 10px) scale(0.85); }
+  66% { transform: translate(10px, 14px) scale(1.1); }
+}
+
+@keyframes orbFloat3 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(16px, 12px) scale(1.2); }
+  66% { transform: translate(-12px, -14px) scale(0.88); }
+}
+
+@keyframes sparkle {
+  0%, 100% { opacity: 0; transform: scale(0) rotate(0deg); }
+  50% { opacity: 1; transform: scale(1) rotate(180deg); }
+}
+
+@keyframes confettiDrop {
+  0% { opacity: 1; transform: translateY(-20px) rotate(0deg) scale(0); }
+  20% { opacity: 1; transform: translateY(0) rotate(72deg) scale(1.2); }
+  100% { opacity: 0; transform: translateY(60px) rotate(360deg) scale(0.3); }
+}
+
+@keyframes pulseRing {
+  0% { transform: scale(0.8); opacity: 0.8; }
+  50% { transform: scale(1.3); opacity: 0; }
+  100% { transform: scale(0.8); opacity: 0; }
+}
+
+@keyframes fabPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(217, 93, 57, 0.5); }
+  50% { box-shadow: 0 0 0 12px rgba(217, 93, 57, 0); }
+}
+
+/* Utility animation classes */
+.animate-fadeIn       { animation: fadeIn 0.5s ease-out both; }
+.animate-slideUp      { animation: slideUp 0.5s ease-out both; }
+.animate-slideDown    { animation: slideDown 0.4s ease-out both; }
+.animate-scaleIn      { animation: scaleIn 0.4s ease-out both; }
+.animate-scaleInBounce { animation: scaleInBounce 0.6s ease-out both; }
+.animate-shake        { animation: shake 0.5s ease-in-out; }
+.animate-wiggle       { animation: wiggle 1s ease-in-out infinite; }
+.animate-float        { animation: float 3s ease-in-out infinite; }
+.animate-shimmer      { animation: shimmer 2s linear infinite; background-size: 200% 100%; }
+.animate-gradientShift { animation: gradientShift 4s ease infinite; background-size: 200% 200%; }
+.animate-progress     { animation: progressPulse 12s ease-in-out infinite; }
+.animate-orbFloat1    { animation: orbFloat1 6s ease-in-out infinite; }
+.animate-orbFloat2    { animation: orbFloat2 7s ease-in-out infinite; }
+.animate-orbFloat3    { animation: orbFloat3 5s ease-in-out infinite; }
+.animate-sparkle      { animation: sparkle 2s ease-in-out infinite; }
+.animate-confetti     { animation: confettiDrop 1.5s ease-out both; }
+.animate-pulseRing    { animation: pulseRing 2s ease-out infinite; }
+.animate-fabPulse     { animation: fabPulse 2s ease-in-out infinite; }
+
+/* Staggered animation delays */
+.delay-100  { animation-delay: 0.1s; }
+.delay-200  { animation-delay: 0.2s; }
+.delay-300  { animation-delay: 0.3s; }
+.delay-400  { animation-delay: 0.4s; }
+.delay-500  { animation-delay: 0.5s; }
+.delay-700  { animation-delay: 0.7s; }
+.delay-1000 { animation-delay: 1s; }
+
+@layer utilities {
+  .scrollbar-none {
+    scrollbar-width: none; /* Firefox */
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Edge */
+  }
+}
+
+/* Custom scrollbars for lists */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}

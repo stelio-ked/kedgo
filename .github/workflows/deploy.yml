@@ -1,0 +1,58 @@
+name: CI/CD Pipeline - Auto Deploy Easypanel
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
+
+jobs:
+  validate-and-test:
+    name: Validar Código e Compilar
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do Código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Instalar Dependências
+        run: npm ci --legacy-peer-deps
+
+      - name: Executar Linter (Verificação de Sintaxe e Tipagem)
+        run: npm run lint
+
+      - name: Compilar Aplicação (Build de Produção)
+        run: npm run build
+
+  deploy:
+    name: Trigger Deploy no Easypanel
+    needs: validate-and-test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+
+    steps:
+      - name: Chamar Webhook do Easypanel
+        env:
+          EASYPANEL_WEBHOOK: ${{ secrets.EASYPANEL_DEPLOY_WEBHOOK }}
+        run: |
+          if [ -z "$EASYPANEL_WEBHOOK" ]; then
+            echo "Aviso: EASYPANEL_DEPLOY_WEBHOOK não configurado nos Secrets do GitHub. O deploy automático via Webhook foi pulado."
+            echo "Para habilitar, adicione o segredo EASYPANEL_DEPLOY_WEBHOOK com a URL gerada pelo Easypanel."
+            exit 0
+          fi
+          echo "Disparando deploy automático no Easypanel..."
+          curl -X POST "$EASYPANEL_WEBHOOK" \
+            -H "Content-Type: application/json" \
+            -d '{"ref": "${{ github.ref }}", "repository": "${{ github.repository }}"}' \
+            --fail
+          echo "Deploy enviado com sucesso!"

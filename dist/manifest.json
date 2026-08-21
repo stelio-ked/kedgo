@@ -1,0 +1,24 @@
+{
+  "name": "KedGo! - Roteiro Personalizado de Viagem",
+  "short_name": "KedGo!",
+  "description": "Seu roteiro personalizado individual ou em grupo, sem perrengue. Powered by KedIA.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f172a",
+  "theme_color": "#1E3A5F",
+  "icons": [
+    {
+      "src": "/pwa-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/pwa-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

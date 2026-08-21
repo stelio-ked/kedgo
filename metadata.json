@@ -1,0 +1,10 @@
+{
+  "name": "Ked GO",
+  "description": "Aplicativo completo de gerenciamento de viagens com roteiros, divisão de custos entre viajantes, central de documentos, mapas e modo offline.",
+  "requestFramePermissions": [
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
