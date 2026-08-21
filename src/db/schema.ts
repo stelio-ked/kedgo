@@ -24,8 +24,11 @@ export const users = pgTable("users", {
   referralCode: text("referral_code").unique(),
   referredBy: text("referred_by"),
   referralCount: integer("referral_count").default(0).notNull(),
-  planType: text("plan_type").default("starter").notNull(), // 'starter' | 'pass' | 'pro_lifetime'
+  planType: text("plan_type").default("starter").notNull(), // 'starter' | 'pass' | 'annual' | 'founders_lifetime' | 'pro_lifetime'
   isLifetimePro: boolean("is_lifetime_pro").default(false).notNull(),
+  isAnnualPro: boolean("is_annual_pro").default(false).notNull(),
+  annualExpiresAt: timestamp("annual_expires_at"),
+  activeTripPassId: integer("active_trip_pass_id"),
   trialStartedAt: timestamp("trial_started_at").defaultNow(),
 });
 
@@ -373,4 +376,13 @@ export const aiPromptLogs = pgTable("ai_prompt_logs", {
 export const aiPromptLogsRelations = relations(aiPromptLogs, ({ one }) => ({
   user: one(users, { fields: [aiPromptLogs.userId], references: [users.id] }),
 }));
+
+// Lote de Fundadores (Founders Pass) — Controle atômico das 200 licenças vitalícias
+export const foundersQuota = pgTable("founders_quota", {
+  id: serial("id").primaryKey(),
+  totalLimit: integer("total_limit").default(200).notNull(),
+  soldUnits: integer("sold_units").default(38).notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 

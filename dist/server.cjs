@@ -52,6 +52,7 @@ __export(schema_exports, {
   flightPassengersRelations: () => flightPassengersRelations,
   flights: () => flights,
   flightsRelations: () => flightsRelations,
+  foundersQuota: () => foundersQuota,
   generalTips: () => generalTips,
   generalTipsRelations: () => generalTipsRelations,
   itineraries: () => itineraries,
@@ -71,7 +72,7 @@ __export(schema_exports, {
   users: () => users,
   usersRelations: () => usersRelations
 });
-var import_drizzle_orm, import_pg_core, users, itineraries, referrals, referralInvites, travelers, destinations, itineraryDays, activities, costCategories, costs, documents, flights, flightPassengers, generalTips, notifications, nearbyPlaces, usersRelations, itinerariesRelations, destinationsRelations, nearbyPlacesRelations, itineraryDaysRelations, travelersRelations, costCategoriesRelations, costsRelations, documentsRelations, flightsRelations, flightPassengersRelations, generalTipsRelations, notificationsRelations, transactionLogs, transactionLogsRelations, activitiesRelations, chatMessages, chatMessagesRelations, accessLogs, accessLogsRelations, apiUsageLogs, aiPromptLogs, aiPromptLogsRelations;
+var import_drizzle_orm, import_pg_core, users, itineraries, referrals, referralInvites, travelers, destinations, itineraryDays, activities, costCategories, costs, documents, flights, flightPassengers, generalTips, notifications, nearbyPlaces, usersRelations, itinerariesRelations, destinationsRelations, nearbyPlacesRelations, itineraryDaysRelations, travelersRelations, costCategoriesRelations, costsRelations, documentsRelations, flightsRelations, flightPassengersRelations, generalTipsRelations, notificationsRelations, transactionLogs, transactionLogsRelations, activitiesRelations, chatMessages, chatMessagesRelations, accessLogs, accessLogsRelations, apiUsageLogs, aiPromptLogs, aiPromptLogsRelations, foundersQuota;
 var init_schema = __esm({
   "src/db/schema.ts"() {
     import_drizzle_orm = require("drizzle-orm");
@@ -91,8 +92,11 @@ var init_schema = __esm({
       referredBy: (0, import_pg_core.text)("referred_by"),
       referralCount: (0, import_pg_core.integer)("referral_count").default(0).notNull(),
       planType: (0, import_pg_core.text)("plan_type").default("starter").notNull(),
-      // 'starter' | 'pass' | 'pro_lifetime'
+      // 'starter' | 'pass' | 'annual' | 'founders_lifetime' | 'pro_lifetime'
       isLifetimePro: (0, import_pg_core.boolean)("is_lifetime_pro").default(false).notNull(),
+      isAnnualPro: (0, import_pg_core.boolean)("is_annual_pro").default(false).notNull(),
+      annualExpiresAt: (0, import_pg_core.timestamp)("annual_expires_at"),
+      activeTripPassId: (0, import_pg_core.integer)("active_trip_pass_id"),
       trialStartedAt: (0, import_pg_core.timestamp)("trial_started_at").defaultNow()
     });
     itineraries = (0, import_pg_core.pgTable)("itineraries", {
@@ -400,6 +404,12 @@ var init_schema = __esm({
     aiPromptLogsRelations = (0, import_drizzle_orm.relations)(aiPromptLogs, ({ one }) => ({
       user: one(users, { fields: [aiPromptLogs.userId], references: [users.id] })
     }));
+    foundersQuota = (0, import_pg_core.pgTable)("founders_quota", {
+      id: (0, import_pg_core.serial)("id").primaryKey(),
+      totalLimit: (0, import_pg_core.integer)("total_limit").default(200).notNull(),
+      soldUnits: (0, import_pg_core.integer)("sold_units").default(38).notNull(),
+      updatedAt: (0, import_pg_core.timestamp)("updated_at").defaultNow().notNull()
+    });
   }
 });
 
@@ -1604,14 +1614,28 @@ router3.post("/simulate-purchase", async (req, res) => {
   try {
     const { userEmail, planType } = req.body;
     if (!userEmail) return res.status(400).json({ error: "userEmail \xE9 obrigat\xF3rio" });
-    const targetPlan = planType === "pass" ? "pass" : "pro_lifetime";
-    const isPro = targetPlan === "pro_lifetime";
+    let targetPlan = "annual";
+    let isLifetimePro = false;
+    let isAnnualPro = false;
+    let annualExpiresAt = null;
+    if (planType === "pass") {
+      targetPlan = "pass";
+    } else if (planType === "founders_lifetime" || planType === "pro_lifetime") {
+      targetPlan = "founders_lifetime";
+      isLifetimePro = true;
+    } else {
+      targetPlan = "annual";
+      isAnnualPro = true;
+      annualExpiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1e3);
+    }
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { users: users2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
     const { eq: eq11 } = await import("drizzle-orm");
     const [updatedUser] = await db2.update(users2).set({
       planType: targetPlan,
-      isLifetimePro: isPro
+      isLifetimePro,
+      isAnnualPro,
+      annualExpiresAt
     }).where(eq11(users2.email, userEmail.toLowerCase().trim())).returning();
     if (!updatedUser) {
       return res.status(404).json({ error: "Usu\xE1rio n\xE3o encontrado no banco de dados." });
@@ -2211,8 +2235,14 @@ router4.post("/", authMiddleware, async (req, res) => {
   if (!db) return res.status(503).json({ error: "DATABASE_URL n\xE3o configurada." });
   try {
     const { title, data } = req.body;
-    const [userRecord] = await db.select({ planType: users.planType, isLifetimePro: users.isLifetimePro }).from(users).where((0, import_drizzle_orm5.eq)(users.id, req.user.id)).limit(1);
-    const isPro = userRecord?.isLifetimePro || userRecord?.planType === "pro_lifetime" || userRecord?.planType === "pass";
+    const [userRecord] = await db.select({
+      planType: users.planType,
+      isLifetimePro: users.isLifetimePro,
+      isAnnualPro: users.isAnnualPro,
+      annualExpiresAt: users.annualExpiresAt
+    }).from(users).where((0, import_drizzle_orm5.eq)(users.id, req.user.id)).limit(1);
+    const isAnnualActive = userRecord?.isAnnualPro || userRecord?.annualExpiresAt && new Date(userRecord.annualExpiresAt) > /* @__PURE__ */ new Date();
+    const isPro = userRecord?.isLifetimePro || userRecord?.planType === "founders_lifetime" || userRecord?.planType === "pro_lifetime" || userRecord?.planType === "annual" || isAnnualActive;
     if (!isPro) {
       const userItineraries = await db.select({ id: itineraries.id }).from(itineraries).where((0, import_drizzle_orm5.eq)(itineraries.ownerId, req.user.id));
       if (userItineraries.length >= 1) {
@@ -2654,8 +2684,14 @@ var geminiQuotaMiddleware = async (req, res, next) => {
   const itineraryId = req.body?.itineraryId || req.query?.itineraryId || null;
   const dateStr = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
   try {
-    const [userRecord] = await db.select({ planType: users.planType, isLifetimePro: users.isLifetimePro }).from(users).where((0, import_drizzle_orm7.eq)(users.id, userId)).limit(1);
-    const isPro = userRecord?.isLifetimePro || userRecord?.planType === "pro_lifetime" || userRecord?.planType === "pass";
+    const [userRecord] = await db.select({
+      planType: users.planType,
+      isLifetimePro: users.isLifetimePro,
+      isAnnualPro: users.isAnnualPro,
+      annualExpiresAt: users.annualExpiresAt
+    }).from(users).where((0, import_drizzle_orm7.eq)(users.id, userId)).limit(1);
+    const isAnnualActive = userRecord?.isAnnualPro || userRecord?.annualExpiresAt && new Date(userRecord.annualExpiresAt) > /* @__PURE__ */ new Date();
+    const isPro = userRecord?.isLifetimePro || userRecord?.planType === "founders_lifetime" || userRecord?.planType === "pro_lifetime" || userRecord?.planType === "annual" || isAnnualActive || userRecord?.planType === "pass";
     if (!isPro) {
       const isGeneratingItinerary = req.path.includes("generate-itinerary");
       const successfulGenerations = await db.select({ id: aiPromptLogs.id }).from(aiPromptLogs).where((0, import_drizzle_orm7.and)((0, import_drizzle_orm7.eq)(aiPromptLogs.userId, userId), (0, import_drizzle_orm7.eq)(aiPromptLogs.success, true)));
@@ -4066,7 +4102,9 @@ router8.get("/status", authMiddleware, async (req, res) => {
     if (!user) {
       return res.status(404).json({ error: "Usu\xE1rio n\xE3o encontrado" });
     }
-    const isPro = user.isLifetimePro || user.planType === "pro_lifetime";
+    const isFounders = user.isLifetimePro || user.planType === "founders_lifetime" || user.planType === "pro_lifetime";
+    const isAnnual = user.isAnnualPro || user.planType === "annual" || user.annualExpiresAt && new Date(user.annualExpiresAt) > /* @__PURE__ */ new Date();
+    const isPro = isFounders || isAnnual;
     const isPass = user.planType === "pass";
     const isStarter = !isPro && !isPass;
     const startDate = user.trialStartedAt || user.createdAt || /* @__PURE__ */ new Date();
@@ -4077,15 +4115,18 @@ router8.get("/status", authMiddleware, async (req, res) => {
     const trialExpired = isStarter && trialDaysRemaining <= 0;
     res.json({
       planType: user.planType ?? "starter",
-      isLifetimePro: isPro,
+      isLifetimePro: isFounders,
+      isAnnualPro: isAnnual,
+      annualExpiresAt: user.annualExpiresAt,
       isTrial: isStarter,
       trialDaysRemaining,
       trialExpired,
       isPro,
       isPass,
-      canCreateItinerary: !trialExpired,
-      canUseAI: !trialExpired,
+      canCreateItinerary: isPro || isPass || !trialExpired,
+      canUseAI: isPro || isPass || !trialExpired,
       canExportPdf: isPro || isPass,
+      canUseOCR: isPro || isPass,
       maxDocuments: isPro || isPass ? 999 : trialExpired ? 0 : 3
     });
   } catch (err) {
@@ -4114,6 +4155,41 @@ function getAppUrl2(req) {
   const host = req.headers["x-forwarded-host"] || req.get("host") || "localhost:3000";
   return `${proto}://${host}`;
 }
+async function getOrInitFoundersQuota() {
+  try {
+    let [quota] = await db.select().from(foundersQuota).limit(1);
+    if (!quota) {
+      [quota] = await db.insert(foundersQuota).values({
+        totalLimit: 200,
+        soldUnits: 38
+        // Initial seed for realism based on @KedPeloMundo early buyers
+      }).returning();
+    }
+    return quota;
+  } catch (err) {
+    console.error("[Founders Quota DB Error]", err);
+    return { id: 1, totalLimit: 200, soldUnits: 38 };
+  }
+}
+router9.get("/founders-status", async (req, res) => {
+  try {
+    const quota = await getOrInitFoundersQuota();
+    const totalLimit = quota.totalLimit || 200;
+    const soldUnits = Math.min(totalLimit, quota.soldUnits || 0);
+    const remainingUnits = Math.max(0, totalLimit - soldUnits);
+    const isAvailable = remainingUnits > 0;
+    res.json({
+      totalLimit,
+      soldUnits,
+      remainingUnits,
+      isAvailable,
+      percentageClaimed: Math.round(soldUnits / totalLimit * 100)
+    });
+  } catch (err) {
+    console.error("[Founders Status Error]", err.message);
+    res.status(500).json({ error: "Erro ao consultar status do lote de fundadores." });
+  }
+});
 router9.post("/create-checkout-session", authMiddleware, async (req, res) => {
   try {
     const userId = req.user?.id;
@@ -4122,13 +4198,27 @@ router9.post("/create-checkout-session", authMiddleware, async (req, res) => {
       return res.status(401).json({ error: "N\xE3o autenticado." });
     }
     const { plan, itineraryId, discountCode } = req.body;
-    const planType = plan === "pro_lifetime" ? "pro_lifetime" : "pass";
+    let planType = "annual";
+    if (plan === "pass") planType = "pass";
+    else if (plan === "founders_lifetime" || plan === "pro_lifetime") planType = "founders_lifetime";
+    else planType = "annual";
+    if (planType === "founders_lifetime") {
+      const quota = await getOrInitFoundersQuota();
+      if ((quota.soldUnits || 0) >= (quota.totalLimit || 200)) {
+        return res.status(400).json({
+          error: "O Lote Especial de Fundadores (200 licen\xE7as) foi totalmente esgotado! Por favor, selecione a Assinatura Anual KedGo Pro ou o Passe Por Viagem.",
+          isSoldOut: true
+        });
+      }
+    }
     let validDiscount = false;
+    let isCouponKed10 = false;
     let validatedDiscountCode = "";
     if (discountCode && typeof discountCode === "string") {
       const cleanCode = discountCode.trim().toUpperCase();
       if (cleanCode === "KED10") {
         validDiscount = true;
+        isCouponKed10 = true;
         validatedDiscountCode = "KED10";
       } else {
         const [referrer] = await db.select({ id: users.id }).from(users).where((0, import_drizzle_orm12.eq)(users.referralCode, cleanCode)).limit(1);
@@ -4139,38 +4229,41 @@ router9.post("/create-checkout-session", authMiddleware, async (req, res) => {
       }
     }
     const baseUrl = getAppUrl2(req);
-    const envPriceOrProd = planType === "pro_lifetime" ? process.env.STRIPE_PRICE_PRO || process.env.STRIPE_PROD_PRO || "prod_V3nnOmP0jeKhV5" : process.env.STRIPE_PRICE_PASS || process.env.STRIPE_PROD_PASS || "prod_V3nlXH3Awlz9LA";
-    let line_items = [];
-    if (envPriceOrProd && envPriceOrProd.startsWith("price_")) {
-      line_items = [
-        {
-          price: envPriceOrProd,
-          quantity: 1
-        }
-      ];
-    } else {
-      const baseAmountCents = planType === "pro_lifetime" ? 14990 : 2990;
-      const discountCents = validDiscount ? 1e3 : 0;
-      const finalAmountCents = Math.max(1e3, baseAmountCents - discountCents);
-      const priceData = {
-        currency: "brl",
-        unit_amount: finalAmountCents,
-        product_data: {
-          name: planType === "pro_lifetime" ? "KedGo! Pro Vital\xEDcio" : "Passe KedGo!",
-          description: planType === "pro_lifetime" ? "Acesso vital\xEDcio e ilimitado a todos os recursos e roteiros com IA." : "Acesso total aos recursos inteligentes para 1 viagem."
-        }
-      };
-      if (envPriceOrProd && envPriceOrProd.startsWith("prod_")) {
-        priceData.product = envPriceOrProd;
-        delete priceData.product_data;
-      }
-      line_items = [
-        {
-          price_data: priceData,
-          quantity: 1
-        }
-      ];
+    let baseAmountCents = 7990;
+    let planTitle = "KedGo! Pro Anual (1 Ano)";
+    let planDescription = "Acesso ilimitado a todas as viagens, roteiros com IA, OCR de recibos e modo 100% offline.";
+    if (planType === "pass") {
+      baseAmountCents = 2990;
+      planTitle = "Passe KedGo! Por Viagem";
+      planDescription = "Acesso total aos recursos avan\xE7ados e inteligentes para 1 viagem.";
+    } else if (planType === "founders_lifetime") {
+      baseAmountCents = 14990;
+      planTitle = "Founders Pass Vital\xEDcio \u2014 Lote Limitado (200 Vagas)";
+      planDescription = "Acesso vital\xEDcio irrestrito a todos os recursos atuais e futuros do KedGo! sem mensalidades.";
     }
+    let discountCents = 0;
+    if (validDiscount) {
+      if (isCouponKed10) {
+        discountCents = Math.round(baseAmountCents * 0.1);
+      } else {
+        discountCents = 1e3;
+      }
+    }
+    const finalAmountCents = Math.max(1e3, baseAmountCents - discountCents);
+    const priceData = {
+      currency: "brl",
+      unit_amount: finalAmountCents,
+      product_data: {
+        name: planTitle,
+        description: planDescription
+      }
+    };
+    const line_items = [
+      {
+        price_data: priceData,
+        quantity: 1
+      }
+    ];
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       mode: "payment",
@@ -4202,8 +4295,22 @@ router9.get("/verify-session/:sessionId", authMiddleware, async (req, res) => {
       const planType = session.metadata?.planType;
       const itineraryId = session.metadata?.itineraryId;
       if (userId && !isNaN(userId) && userId > 0) {
-        if (planType === "pro_lifetime") {
-          await db.update(users).set({ planType: "pro_lifetime", isLifetimePro: true }).where((0, import_drizzle_orm12.eq)(users.id, userId));
+        if (planType === "founders_lifetime" || planType === "pro_lifetime") {
+          await db.update(users).set({
+            planType: "founders_lifetime",
+            isLifetimePro: true
+          }).where((0, import_drizzle_orm12.eq)(users.id, userId));
+          await db.update(foundersQuota).set({
+            soldUnits: import_drizzle_orm12.sql`${foundersQuota.soldUnits} + 1`,
+            updatedAt: /* @__PURE__ */ new Date()
+          });
+        } else if (planType === "annual") {
+          const oneYearFromNow = new Date(Date.now() + 365 * 24 * 60 * 60 * 1e3);
+          await db.update(users).set({
+            planType: "annual",
+            isAnnualPro: true,
+            annualExpiresAt: oneYearFromNow
+          }).where((0, import_drizzle_orm12.eq)(users.id, userId));
         } else if (planType === "pass") {
           await db.update(users).set({ planType: "pass" }).where((0, import_drizzle_orm12.eq)(users.id, userId));
           if (itineraryId && !isNaN(Number(itineraryId))) {
@@ -4241,8 +4348,22 @@ router9.post("/webhook", async (req, res) => {
     const itineraryId = session.metadata?.itineraryId;
     if (userId && !isNaN(userId) && userId > 0) {
       try {
-        if (planType === "pro_lifetime") {
-          await db.update(users).set({ planType: "pro_lifetime", isLifetimePro: true }).where((0, import_drizzle_orm12.eq)(users.id, userId));
+        if (planType === "founders_lifetime" || planType === "pro_lifetime") {
+          await db.update(users).set({
+            planType: "founders_lifetime",
+            isLifetimePro: true
+          }).where((0, import_drizzle_orm12.eq)(users.id, userId));
+          await db.update(foundersQuota).set({
+            soldUnits: import_drizzle_orm12.sql`${foundersQuota.soldUnits} + 1`,
+            updatedAt: /* @__PURE__ */ new Date()
+          });
+        } else if (planType === "annual") {
+          const oneYearFromNow = new Date(Date.now() + 365 * 24 * 60 * 60 * 1e3);
+          await db.update(users).set({
+            planType: "annual",
+            isAnnualPro: true,
+            annualExpiresAt: oneYearFromNow
+          }).where((0, import_drizzle_orm12.eq)(users.id, userId));
         } else if (planType === "pass") {
           await db.update(users).set({ planType: "pass" }).where((0, import_drizzle_orm12.eq)(users.id, userId));
           if (itineraryId && !isNaN(Number(itineraryId))) {
@@ -4273,10 +4394,24 @@ async function startServer() {
         ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_count INTEGER DEFAULT 0;
         ALTER TABLE users ADD COLUMN IF NOT EXISTS plan_type TEXT DEFAULT 'starter';
         ALTER TABLE users ADD COLUMN IF NOT EXISTS is_lifetime_pro BOOLEAN DEFAULT FALSE;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS is_annual_pro BOOLEAN DEFAULT FALSE;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS annual_expires_at TIMESTAMP;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS active_trip_pass_id INTEGER;
         ALTER TABLE users ADD COLUMN IF NOT EXISTS trial_started_at TIMESTAMP DEFAULT NOW();
         
         ALTER TABLE itineraries ADD COLUMN IF NOT EXISTS pass_purchased BOOLEAN DEFAULT FALSE;
         ALTER TABLE activities ADD COLUMN IF NOT EXISTS type TEXT;
+
+        CREATE TABLE IF NOT EXISTS founders_quota (
+          id SERIAL PRIMARY KEY,
+          total_limit INTEGER NOT NULL DEFAULT 200,
+          sold_units INTEGER NOT NULL DEFAULT 38,
+          updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+        );
+
+        INSERT INTO founders_quota (id, total_limit, sold_units) 
+        VALUES (1, 200, 38)
+        ON CONFLICT (id) DO NOTHING;
 
         CREATE TABLE IF NOT EXISTS referrals (
           id SERIAL PRIMARY KEY,

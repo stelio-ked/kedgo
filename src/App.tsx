@@ -26,7 +26,8 @@ import {
   TravelDocument,
   Activity,
   ItineraryDay,
-  CostCategory
+  CostCategory,
+  PlanType
 } from "./types";
 import { 
   INITIAL_TRAVELERS, 
@@ -188,7 +189,7 @@ export default function App() {
   const [showReferralModal, setShowReferralModal] = useState(false);
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [showKedIAGuideModal, setShowKedIAGuideModal] = useState(false);
-  const [userPlan, setUserPlan] = useState<'starter' | 'pass' | 'pro_lifetime'>('starter');
+  const [userPlan, setUserPlan] = useState<PlanType>('starter');
   const [showTrialExpiredModal, setShowTrialExpiredModal] = useState(false);
   const [blockedFeatureName, setBlockedFeatureName] = useState("esta funcionalidade");
 
@@ -225,9 +226,12 @@ export default function App() {
         .then(res => res.json())
         .then(data => {
           if (data.paid) {
-            const grantedPlan = data.planType || "pro_lifetime";
+            const grantedPlan: PlanType = data.planType || "annual";
             setUserPlan(grantedPlan);
-            alert(`🎉 Pagamento confirmado pela Stripe com sucesso! Seu plano foi atualizado para ${grantedPlan === 'pro_lifetime' ? 'KedGo! Pro Vitalício' : 'Passe KedGo!'}.`);
+            let planLabel = "KedGo! Pro Anual";
+            if (grantedPlan === "founders_lifetime" || grantedPlan === "pro_lifetime") planLabel = "Founders Pass Vitalício";
+            else if (grantedPlan === "pass") planLabel = "Passe Por Viagem";
+            alert(`🎉 Pagamento confirmado pela Stripe com sucesso! Seu plano foi atualizado para ${planLabel}.`);
           }
           window.history.replaceState({}, document.title, window.location.pathname);
         })
@@ -258,8 +262,10 @@ export default function App() {
       .then(data => {
         if (data.user) {
           setCurrentUser(data.user);
-          if (data.user.isLifetimePro || data.user.planType === 'pro_lifetime') {
-            setUserPlan('pro_lifetime');
+          if (data.user.isLifetimePro || data.user.planType === 'founders_lifetime' || data.user.planType === 'pro_lifetime') {
+            setUserPlan('founders_lifetime');
+          } else if (data.user.isAnnualPro || data.user.planType === 'annual') {
+            setUserPlan('annual');
           } else if (data.user.planType === 'pass') {
             setUserPlan('pass');
           } else {
@@ -3291,7 +3297,7 @@ export default function App() {
         onClose={() => setShowReferralModal(false)}
         currentUser={currentUser}
         token={token}
-        isLifetimePro={userPlan === 'pro_lifetime'}
+        isLifetimePro={userPlan === 'founders_lifetime' || userPlan === 'pro_lifetime' || userPlan === 'annual'}
       />
 
       <CheckoutModal
@@ -3301,9 +3307,12 @@ export default function App() {
         activeItineraryId={activeItineraryId}
         onSuccess={(newPlan) => {
           setUserPlan(newPlan);
-          alert(`Parabéns! Seu plano foi atualizado para ${newPlan === 'pro_lifetime' ? 'KedGo! Pro Vitalício' : 'Passe KedGo!'}.`);
+          let planLabel = "KedGo! Pro Anual";
+          if (newPlan === "founders_lifetime" || newPlan === "pro_lifetime") planLabel = "Founders Pass Vitalício";
+          else if (newPlan === "pass") planLabel = "Passe Por Viagem";
+          alert(`Parabéns! Seu plano foi atualizado para ${planLabel}.`);
         }}
-        initialPlan="pro_lifetime"
+        initialPlan="annual"
       />
 
       <KedIAGuideModal

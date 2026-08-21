@@ -26,12 +26,18 @@ export const geminiQuotaMiddleware = async (req: AuthRequest, res: Response, nex
   try {
     // Buscar perfil do usuário para verificar plano
     const [userRecord] = await db
-      .select({ planType: users.planType, isLifetimePro: users.isLifetimePro })
+      .select({ 
+        planType: users.planType, 
+        isLifetimePro: users.isLifetimePro,
+        isAnnualPro: users.isAnnualPro,
+        annualExpiresAt: users.annualExpiresAt 
+      })
       .from(users)
       .where(eq(users.id, userId))
       .limit(1);
 
-    const isPro = userRecord?.isLifetimePro || userRecord?.planType === "pro_lifetime" || userRecord?.planType === "pass";
+    const isAnnualActive = userRecord?.isAnnualPro || (userRecord?.annualExpiresAt && new Date(userRecord.annualExpiresAt) > new Date());
+    const isPro = userRecord?.isLifetimePro || userRecord?.planType === "founders_lifetime" || userRecord?.planType === "pro_lifetime" || userRecord?.planType === "annual" || isAnnualActive || userRecord?.planType === "pass";
 
     if (!isPro) {
       // Regra para Starter (convidado/gratuito):

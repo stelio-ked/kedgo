@@ -29,10 +29,24 @@ async function startServer() {
         ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_count INTEGER DEFAULT 0;
         ALTER TABLE users ADD COLUMN IF NOT EXISTS plan_type TEXT DEFAULT 'starter';
         ALTER TABLE users ADD COLUMN IF NOT EXISTS is_lifetime_pro BOOLEAN DEFAULT FALSE;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS is_annual_pro BOOLEAN DEFAULT FALSE;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS annual_expires_at TIMESTAMP;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS active_trip_pass_id INTEGER;
         ALTER TABLE users ADD COLUMN IF NOT EXISTS trial_started_at TIMESTAMP DEFAULT NOW();
         
         ALTER TABLE itineraries ADD COLUMN IF NOT EXISTS pass_purchased BOOLEAN DEFAULT FALSE;
         ALTER TABLE activities ADD COLUMN IF NOT EXISTS type TEXT;
+
+        CREATE TABLE IF NOT EXISTS founders_quota (
+          id SERIAL PRIMARY KEY,
+          total_limit INTEGER NOT NULL DEFAULT 200,
+          sold_units INTEGER NOT NULL DEFAULT 38,
+          updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+        );
+
+        INSERT INTO founders_quota (id, total_limit, sold_units) 
+        VALUES (1, 200, 38)
+        ON CONFLICT (id) DO NOTHING;
 
         CREATE TABLE IF NOT EXISTS referrals (
           id SERIAL PRIMARY KEY,

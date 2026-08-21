@@ -176,3 +176,13 @@ export interface NearbyPlace {
   mapsLink?: string | null;
   createdAt?: string;
 }
+
+export type PlanType = 'starter' | 'pass' | 'annual' | 'founders_lifetime' | 'pro_lifetime';
+
+export interface FoundersStatus {
+  totalLimit: number;
+  soldUnits: number;
+  remainingUnits: number;
+  isAvailable: boolean;
+}
+

@@ -94,12 +94,18 @@ router.post("/", authMiddleware, async (req: AuthRequest, res) => {
 
     // Trava do modo Trial/Starter: apenas 1 roteiro permitido (múltiplos roteiros exclusivos do KedGo Pro)
     const [userRecord] = await db
-      .select({ planType: users.planType, isLifetimePro: users.isLifetimePro })
+      .select({ 
+        planType: users.planType, 
+        isLifetimePro: users.isLifetimePro,
+        isAnnualPro: users.isAnnualPro,
+        annualExpiresAt: users.annualExpiresAt 
+      })
       .from(users)
       .where(eq(users.id, req.user.id))
       .limit(1);
 
-    const isPro = userRecord?.isLifetimePro || userRecord?.planType === "pro_lifetime" || userRecord?.planType === "pass";
+    const isAnnualActive = userRecord?.isAnnualPro || (userRecord?.annualExpiresAt && new Date(userRecord.annualExpiresAt) > new Date());
+    const isPro = userRecord?.isLifetimePro || userRecord?.planType === "founders_lifetime" || userRecord?.planType === "pro_lifetime" || userRecord?.planType === "annual" || isAnnualActive;
 
     if (!isPro) {
       const userItineraries = await db

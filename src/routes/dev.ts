@@ -36,8 +36,21 @@ router.post("/simulate-purchase", async (req, res) => {
     const { userEmail, planType } = req.body;
     if (!userEmail) return res.status(400).json({ error: "userEmail é obrigatório" });
 
-    const targetPlan = planType === "pass" ? "pass" : "pro_lifetime";
-    const isPro = targetPlan === "pro_lifetime";
+    let targetPlan = "annual";
+    let isLifetimePro = false;
+    let isAnnualPro = false;
+    let annualExpiresAt = null;
+
+    if (planType === "pass") {
+      targetPlan = "pass";
+    } else if (planType === "founders_lifetime" || planType === "pro_lifetime") {
+      targetPlan = "founders_lifetime";
+      isLifetimePro = true;
+    } else {
+      targetPlan = "annual";
+      isAnnualPro = true;
+      annualExpiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
+    }
 
     const { db } = await import("../db/index.js");
     const { users } = await import("../db/schema.js");
@@ -47,7 +60,9 @@ router.post("/simulate-purchase", async (req, res) => {
       .update(users)
       .set({
         planType: targetPlan,
-        isLifetimePro: isPro,
+        isLifetimePro,
+        isAnnualPro,
+        annualExpiresAt,
       })
       .where(eq(users.email, userEmail.toLowerCase().trim()))
       .returning();

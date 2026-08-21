@@ -37,7 +37,9 @@ router.get("/status", authMiddleware, async (req: AuthRequest, res) => {
       return res.status(404).json({ error: "Usuário não encontrado" });
     }
 
-    const isPro = user.isLifetimePro || user.planType === "pro_lifetime";
+    const isFounders = user.isLifetimePro || user.planType === "founders_lifetime" || user.planType === "pro_lifetime";
+    const isAnnual = user.isAnnualPro || user.planType === "annual" || (user.annualExpiresAt && new Date(user.annualExpiresAt) > new Date());
+    const isPro = isFounders || isAnnual;
     const isPass = user.planType === "pass";
     const isStarter = !isPro && !isPass;
 
@@ -50,15 +52,18 @@ router.get("/status", authMiddleware, async (req: AuthRequest, res) => {
 
     res.json({
       planType: user.planType ?? "starter",
-      isLifetimePro: isPro,
+      isLifetimePro: isFounders,
+      isAnnualPro: isAnnual,
+      annualExpiresAt: user.annualExpiresAt,
       isTrial: isStarter,
       trialDaysRemaining,
       trialExpired,
       isPro,
       isPass,
-      canCreateItinerary: !trialExpired,
-      canUseAI: !trialExpired,
+      canCreateItinerary: isPro || isPass || !trialExpired,
+      canUseAI: isPro || isPass || !trialExpired,
       canExportPdf: isPro || isPass,
+      canUseOCR: isPro || isPass,
       maxDocuments: isPro || isPass ? 999 : (trialExpired ? 0 : 3),
     });
   } catch (err: any) {

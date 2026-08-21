@@ -51,7 +51,7 @@ export const TrialBanner: React.FC<TrialBannerProps> = ({
         className="ml-3 px-3 py-1 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-[11px] rounded-lg transition-all shadow-xs shrink-0 flex items-center gap-1 cursor-pointer"
       >
         <Sparkles className="w-3 h-3 text-slate-900" />
-        <span>Seja Pro Vitalício</span>
+        <span>Desbloquear KedGo Pro</span>
       </button>
     </div>
   );
