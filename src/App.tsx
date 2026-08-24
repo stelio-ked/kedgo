@@ -258,9 +258,15 @@ export default function App() {
       fetch("/api/auth/me", {
         headers: { Authorization: `Bearer ${token}` }
       })
-      .then(res => res.json())
-      .then(data => {
-        if (data.user) {
+      .then(async res => {
+        if (res.status === 401 || res.status === 403) {
+          setToken(null);
+          localStorage.removeItem("auth_token");
+          return;
+        }
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data && data.user) {
           setCurrentUser(data.user);
           if (data.user.isLifetimePro || data.user.planType === 'founders_lifetime' || data.user.planType === 'pro_lifetime') {
             setUserPlan('founders_lifetime');
@@ -271,14 +277,10 @@ export default function App() {
           } else {
             setUserPlan('starter');
           }
-        } else {
-          setToken(null);
-          localStorage.removeItem("auth_token");
         }
       })
-      .catch(() => {
-        setToken(null);
-        localStorage.removeItem("auth_token");
+      .catch((err) => {
+        console.warn("[KEDGO] Verificação de sessão online diferida:", err?.message || err);
       });
     }
   }, [token, travelerEmail]);
@@ -982,7 +984,14 @@ export default function App() {
 
         const response = await fetch(endpoint, fetchOptions);
         
-        if (!response.ok) return;
+        if (!response.ok) {
+          if (response.status === 401) {
+            console.warn("[KEDGO] Token de autenticação expirado ou inválido. Limpando credenciais locais.");
+            localStorage.removeItem("auth_token");
+            setToken(null);
+          }
+          return;
+        }
         const respData = await response.json();
         
         const dataArray = Array.isArray(respData) ? respData : (respData.itineraries || []);
@@ -1065,8 +1074,45 @@ export default function App() {
           }
         }
         setHasLoadedCloud(true);
-      } catch (err) {
-        console.error("Erro ao puxar dados da nuvem:", err);
+      } catch (err: any) {
+        const isNetworkError = err?.message && (
+          err.message.includes("Failed to fetch") || 
+          err.message.includes("network error") || 
+          err.message.includes("NetworkError") || 
+          err.message.includes("abort") ||
+          err.message.includes("Load failed")
+        );
+        if (isNetworkError) {
+          console.warn("[KEDGO] Sincronização em nuvem temporariamente diferida (modo offline ou reconexão em andamento):", err.message);
+        } else {
+          console.warn("[KEDGO] Aviso ao sincronizar dados da nuvem:", err);
+        }
+
+        // Fallback to local storage cached itineraries if available
+        try {
+          const cached = localStorage.getItem("meu_agente_itineraries_list");
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              setItineraries(parsed);
+              const savedActiveIdStr = localStorage.getItem("meu_agente_active_itinerary_id");
+              const matched = parsed.find((it: any) => String(it.id) === String(savedActiveIdStr)) || parsed[0];
+              if (matched) {
+                setActiveItineraryId(matched.id);
+                const cloudItinerary = matched.data || {};
+                if (cloudItinerary.destinations) setDestinations(cloudItinerary.destinations);
+                if (cloudItinerary.costs) setCosts(cloudItinerary.costs);
+                if (cloudItinerary.costCategories) setCostCategories(cloudItinerary.costCategories);
+                if (cloudItinerary.documents) setDocuments(cloudItinerary.documents);
+                if (cloudItinerary.flights) setFlights(cloudItinerary.flights);
+                if (cloudItinerary.generalTips) setGeneralTips(cloudItinerary.generalTips);
+                if (cloudItinerary.travelers) setTravelers(cloudItinerary.travelers);
+                if (cloudItinerary.notifications) setNotifications(cloudItinerary.notifications);
+                if (cloudItinerary.transactionLogs) setTransactionLogs(cloudItinerary.transactionLogs);
+              }
+            }
+          }
+        } catch {}
       } finally {
         setIsFetchingCloud(false);
         setHasLoadedCloud(true);
