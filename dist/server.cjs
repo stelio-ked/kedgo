@@ -524,32 +524,48 @@ var init_auth = __esm({
 
 // src/services/email.ts
 function createTransporter() {
-  const user = process.env.GMAIL_USER;
-  const pass = process.env.GMAIL_APP_PASSWORD;
-  if (!user || !pass) {
+  const host = process.env.SMTP_HOST || "smtp.hostinger.com";
+  const port = parseInt(process.env.SMTP_PORT || "465", 10);
+  const secure = process.env.SMTP_SECURE !== void 0 ? process.env.SMTP_SECURE === "true" : port === 465;
+  const user = process.env.SMTP_USER || process.env.GMAIL_USER || "contato@kedgo.pro";
+  const pass = process.env.SMTP_PASS || process.env.SMTP_PASSWORD || process.env.GMAIL_APP_PASSWORD;
+  if (!pass) {
     return null;
   }
+  if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD && !process.env.SMTP_USER && !process.env.SMTP_HOST) {
+    return import_nodemailer.default.createTransport({
+      service: "gmail",
+      auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD }
+    });
+  }
   return import_nodemailer.default.createTransport({
-    service: "gmail",
-    auth: { user, pass }
+    host,
+    port,
+    secure,
+    auth: { user, pass },
+    tls: {
+      rejectUnauthorized: false
+    }
   });
 }
 async function sendEmail(payload) {
   const transporter = createTransporter();
-  const from = process.env.GMAIL_USER || "noreply@kedgo.app";
+  const defaultSenderEmail = process.env.SMTP_USER || process.env.GMAIL_USER || "contato@kedgo.pro";
+  const from = process.env.SMTP_FROM || `"KedGo!" <${defaultSenderEmail}>`;
   if (!transporter) {
-    console.log(`[DEV EMAIL] Para: ${payload.to} | Assunto: ${payload.subject}`);
+    console.log(`[DEV EMAIL] Para: ${payload.to} | De: ${from} | Assunto: ${payload.subject}`);
     return { sent: false };
   }
   try {
     const info = await transporter.sendMail({
-      from: `"KedGo!" <${from}>`,
+      from,
       to: payload.to,
       subject: payload.subject,
       html: payload.html,
-      text: payload.text
+      text: payload.text,
+      replyTo: "contato@kedgo.pro"
     });
-    console.log(`[EMAIL ENVIADO] Para: ${payload.to} | MessageId: ${info.messageId}`);
+    console.log(`[EMAIL ENVIADO] Para: ${payload.to} | De: ${from} | MessageId: ${info.messageId}`);
     return { sent: true, messageId: info.messageId };
   } catch (err) {
     console.error(`[EMAIL ERRO] Falha ao enviar para ${payload.to}:`, err.message);

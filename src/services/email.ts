@@ -1,21 +1,22 @@
 /**
  * Serviço de E-mail — KedGo!
  *
- * Usa Nodemailer com Gmail SMTP via App Password (gratuito, até ~500 e-mails/dia).
+ * Configurado por padrão para o Hostinger SMTP com o domínio oficial (@kedgo.pro)
+ * ou qualquer provedor SMTP padrão / Gmail.
  *
- * Configuração necessária nas variáveis de ambiente:
- *   GMAIL_USER=seuemail@gmail.com
- *   GMAIL_APP_PASSWORD=xxxx xxxx xxxx xxxx   ← Senha de App de 16 dígitos
+ * Configuração recomendada nas variáveis de ambiente (.env):
+ *   SMTP_HOST=smtp.hostinger.com
+ *   SMTP_PORT=465
+ *   SMTP_SECURE=true
+ *   SMTP_USER=contato@kedgo.pro
+ *   SMTP_PASS=SuaSenhaCriadaNaHostinger
+ *   SMTP_FROM="KedGo!" <contato@kedgo.pro>
  *
- * Como gerar uma Senha de App do Gmail:
- *   1. Acesse: https://myaccount.google.com/security
- *   2. Ative "Verificação em 2 etapas" se ainda não estiver ativa
- *   3. Acesse: https://myaccount.google.com/apppasswords
- *   4. Crie uma senha para "Outro (nome personalizado)" → "KedGo!"
- *   5. Copie os 16 caracteres gerados e defina GMAIL_APP_PASSWORD no .env
+ * Retrocompatibilidade:
+ *   GMAIL_USER / GMAIL_APP_PASSWORD ainda são suportados como fallback.
  *
- * Em desenvolvimento (sem GMAIL_APP_PASSWORD), os e-mails são registrados
- * no console e salvos em memória (simulatedEmails) como antes.
+ * Em desenvolvimento (sem SMTP_PASS / GMAIL_APP_PASSWORD), os e-mails são
+ * registrados no console com simulação segura.
  */
 
 import nodemailer from "nodemailer";
@@ -23,16 +24,32 @@ import nodemailer from "nodemailer";
 // ─── Configuração do transportador ──────────────────────────────────────────
 
 function createTransporter() {
-  const user = process.env.GMAIL_USER;
-  const pass = process.env.GMAIL_APP_PASSWORD;
+  const host = process.env.SMTP_HOST || "smtp.hostinger.com";
+  const port = parseInt(process.env.SMTP_PORT || "465", 10);
+  const secure = process.env.SMTP_SECURE !== undefined ? process.env.SMTP_SECURE === "true" : port === 465;
+  const user = process.env.SMTP_USER || process.env.GMAIL_USER || "contato@kedgo.pro";
+  const pass = process.env.SMTP_PASS || process.env.SMTP_PASSWORD || process.env.GMAIL_APP_PASSWORD;
 
-  if (!user || !pass) {
-    return null; // modo dev: sem envio real
+  if (!pass) {
+    return null; // modo dev: sem envio real se não houver senha definida
+  }
+
+  // Se o usuário ainda estiver usando Gmail explicitamente
+  if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD && !process.env.SMTP_USER && !process.env.SMTP_HOST) {
+    return nodemailer.createTransport({
+      service: "gmail",
+      auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD },
+    });
   }
 
   return nodemailer.createTransport({
-    service: "gmail",
+    host,
+    port,
+    secure,
     auth: { user, pass },
+    tls: {
+      rejectUnauthorized: false,
+    },
   });
 }
 
@@ -49,24 +66,26 @@ export interface EmailPayload {
 
 export async function sendEmail(payload: EmailPayload): Promise<{ sent: boolean; messageId?: string }> {
   const transporter = createTransporter();
-  const from = process.env.GMAIL_USER || "noreply@kedgo.app";
+  const defaultSenderEmail = process.env.SMTP_USER || process.env.GMAIL_USER || "contato@kedgo.pro";
+  const from = process.env.SMTP_FROM || `"KedGo!" <${defaultSenderEmail}>`;
 
   if (!transporter) {
     // Dev fallback: apenas loga no console
-    console.log(`[DEV EMAIL] Para: ${payload.to} | Assunto: ${payload.subject}`);
+    console.log(`[DEV EMAIL] Para: ${payload.to} | De: ${from} | Assunto: ${payload.subject}`);
     return { sent: false };
   }
 
   try {
     const info = await transporter.sendMail({
-      from: `"KedGo!" <${from}>`,
+      from,
       to: payload.to,
       subject: payload.subject,
       html: payload.html,
       text: payload.text,
+      replyTo: "contato@kedgo.pro",
     });
 
-    console.log(`[EMAIL ENVIADO] Para: ${payload.to} | MessageId: ${info.messageId}`);
+    console.log(`[EMAIL ENVIADO] Para: ${payload.to} | De: ${from} | MessageId: ${info.messageId}`);
     return { sent: true, messageId: info.messageId };
   } catch (err: any) {
     console.error(`[EMAIL ERRO] Falha ao enviar para ${payload.to}:`, err.message);
