@@ -81,7 +81,7 @@ export const KedGoLogo: React.FC<KedGoLogoProps> = ({
         width={width}
         height={height}
         onError={() => setImgError(true)}
-        className="shrink-0 select-none object-contain drop-shadow-md transition-transform duration-200 hover:scale-105"
+        className="shrink-0 select-none object-cover rounded-full drop-shadow-md transition-transform duration-200 hover:scale-105"
         style={{ width: `${width}px`, height: `${height}px` }}
         loading="eager"
         decoding="async"
