@@ -416,7 +416,8 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido correspondente a este schema:
       "title": string,
       "content": string
     }
-  ]
+  ],
+  "summary": string (Resumo inteligente, claro e inspirador em 1 frase descrevendo o roteiro: Destino, quantidade de dias, perfil do viajante e principais destaques/estilo. Exemplo: "Dubrovnik e Costa da Croácia: 5 dias com praias cristalinas, muralhas medievais e gastronomia mediterrânea")
 }`,
         responseMimeType: "application/json",
         temperature: 0.4,
@@ -469,13 +470,19 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido correspondente a este schema:
       });
     }
 
-    // Persist this generation session for template reuse
+    // Persist this generation session for template reuse with rich summary
     try {
       const userId = (req as AuthRequest).user?.id ?? null;
       const city = result?.destinations?.[0]?.city || "";
       const country = result?.destinations?.[0]?.country || "";
       const dates = result?.destinations?.[0]?.dates || "";
       const generatedTitle = `${city}${country ? `, ${country}` : ""} ${dates ? `(${dates})` : ""}`.trim();
+      
+      // Compute a clean, rich summary combining AI output or fallback
+      let summaryText = typeof result?.summary === "string" && result.summary.trim() ? result.summary.trim() : "";
+      if (!summaryText) {
+        summaryText = `${city}${country ? `, ${country}` : ""}: ${requestedDays} dias de roteiro inteligente com atrações culturais e gastronomia`;
+      }
 
       await db.insert(aiPromptLogs).values({
         userId,
@@ -483,6 +490,7 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido correspondente a este schema:
         questions: answers && Object.keys(answers).length > 0 ? JSON.stringify(answers) : null,
         answers: answers && Object.keys(answers).length > 0 ? JSON.stringify(answers) : null,
         generatedTitle: generatedTitle || null,
+        summary: summaryText,
         success: true,
       });
     } catch (logErr) {
@@ -496,7 +504,7 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido correspondente a este schema:
   }
 });
 
-// Returns up to 4 random successful AI generation prompts to power the "quick templates" UI
+// Returns up to 4 high-quality AI generation prompt templates with descriptive summaries
 router.get("/prompt-templates", authMiddleware, async (req: AuthRequest, res) => {
   try {
     const rows = await db
@@ -504,19 +512,81 @@ router.get("/prompt-templates", authMiddleware, async (req: AuthRequest, res) =>
         id: aiPromptLogs.id,
         originalPrompt: aiPromptLogs.originalPrompt,
         generatedTitle: aiPromptLogs.generatedTitle,
+        summary: aiPromptLogs.summary,
       })
       .from(aiPromptLogs)
       .where(eq(aiPromptLogs.success, true))
       .orderBy(sql`RANDOM()`)
-      .limit(4);
+      .limit(6);
 
-    // Build label from generatedTitle or truncate prompt
-    const templates = rows.map((row) => ({
-      label: row.generatedTitle || row.originalPrompt.slice(0, 40),
-      text: row.originalPrompt,
-    }));
+    // Build curated templates with rich labels and clean reference texts
+    const dbTemplates = rows
+      .filter((row) => (row.summary && row.summary.trim()) || (row.generatedTitle && row.generatedTitle.trim()) || (row.originalPrompt && row.originalPrompt.length > 5))
+      .map((row) => {
+        let label = row.summary?.trim() || "";
+        if (!label) {
+          if (row.generatedTitle?.includes("Dubrovnik")) {
+            label = "Dubrovnik: 5 dias na Costa da Croácia com história e praias";
+          } else if (row.generatedTitle?.includes("Los Angeles")) {
+            label = "Los Angeles & Califórnia: 5 dias com praias, cinema e pontos turísticos";
+          } else if (row.generatedTitle?.includes("Paris")) {
+            label = "Paris: 4 dias com arte, monumentos históricos e bistrôs charmosos";
+          } else if (row.generatedTitle) {
+            label = row.generatedTitle;
+          } else {
+            label = row.originalPrompt.slice(0, 65);
+          }
+        }
+        return {
+          id: row.id,
+          label,
+          summary: label,
+          text: row.originalPrompt,
+        };
+      });
 
-    res.json({ templates });
+    // Default premium fallback templates to guarantee 4 high-value options
+    const fallbackTemplates = [
+      {
+        id: -1,
+        label: "Dubrovnik & Costa Croata: 5 dias com praias, muralhas medievais e gastronomia mediterrânea",
+        summary: "Dubrovnik & Costa Croata: 5 dias com praias, muralhas medievais e gastronomia mediterrânea",
+        text: "Quero uma viagem de 5 dias pela Croácia conhecendo Dubrovnik e arredores, com foco em história medieval, passeios de barco e gastronomia local em ritmo equilibrado."
+      },
+      {
+        id: -2,
+        label: "Paris & Roma: 7 dias em casal com museus icônicos, bistrôs charmosos e monumentos históricos",
+        summary: "Paris & Roma: 7 dias em casal com museus icônicos, bistrôs charmosos e monumentos históricos",
+        text: "7 dias divididos entre Paris e Roma em casal, com foco em arte, passeios a pé, alta gastronomia italiana/francesa e hospedagem bem localizada."
+      },
+      {
+        id: -3,
+        label: "Tóquio & Quioto: 10 dias no Japão com templos, tecnologia, gastronomia e deslocamento por trem-bala",
+        summary: "Tóquio & Quioto: 10 dias no Japão com templos, tecnologia, gastronomia e deslocamento por trem-bala",
+        text: "10 dias no Japão visitando Tóquio e Quioto, com foco em cultura tradicional, culinária autêntica, passeios modernos e logística de trem JR."
+      },
+      {
+        id: -4,
+        label: "Los Angeles & Costa da Califórnia: 6 dias de carro com praias, cinema e mirantes",
+        summary: "Los Angeles & Costa da Califórnia: 6 dias de carro com praias, cinema e mirantes",
+        text: "6 dias em Los Angeles e costa da Califórnia (Santa Monica, Malibu, Hollywood) com carro alugado, praias e atrações icônicas."
+      }
+    ];
+
+    // Combine distinct DB templates with fallbacks up to 4
+    const combined: any[] = [];
+    const seen = new Set<string>();
+
+    for (const t of [...dbTemplates, ...fallbackTemplates]) {
+      const key = t.label.toLowerCase().slice(0, 25);
+      if (!seen.has(key)) {
+        seen.add(key);
+        combined.push(t);
+      }
+      if (combined.length >= 4) break;
+    }
+
+    res.json({ templates: combined });
   } catch (err: any) {
     console.error("prompt-templates error:", err);
     res.json({ templates: [] });

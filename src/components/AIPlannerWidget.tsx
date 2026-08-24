@@ -105,6 +105,29 @@ export default function AIPlannerWidget({
   // Custom user inputs for questions
   const [customInputs, setCustomInputs] = useState<Record<string, string>>({});
 
+  // Dynamic quick templates from DB (with fallback)
+  const defaultTemplates = [
+    { label: "Dubrovnik & Costa Croata: 5 dias com praias e história", text: "Quero uma viagem de 5 dias pela Croácia conhecendo Dubrovnik e arredores, com foco em história medieval, passeios de barco e gastronomia local em ritmo equilibrado." },
+    { label: "Paris & Roma: 7 dias em casal com museus e bistrôs", text: "7 dias divididos entre Paris e Roma em casal, com foco em arte, passeios a pé, alta gastronomia italiana/francesa e hospedagem bem localizada." },
+    { label: "Tóquio & Quioto: 10 dias no Japão com templos e trem-bala", text: "10 dias no Japão visitando Tóquio e Quioto, com foco em cultura tradicional, culinária autêntica, passeios modernos e logística de trem JR." },
+    { label: "Los Angeles & Costa: 6 dias de carro pelas praias", text: "6 dias em Los Angeles e costa da Califórnia (Santa Monica, Malibu, Hollywood) com carro alugado, praias e atrações icônicas." }
+  ];
+  const [quickTemplates, setQuickTemplates] = useState(defaultTemplates);
+
+  useEffect(() => {
+    if (!token) return;
+    fetch("/api/gemini/prompt-templates", {
+      headers: getAiHeaders({ "Authorization": `Bearer ${token}` })
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.templates && data.templates.length >= 2) {
+          setQuickTemplates(data.templates);
+        }
+      })
+      .catch(() => {});
+  }, [token]);
+
   // Loading messages rotation
   const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
   const loadingMessages = [
@@ -185,12 +208,8 @@ export default function AIPlannerWidget({
       const result = await response.json();
       setEvaluation(result);
 
-      if (result.isSpecific) {
-        // Safe to go straight to itinerary generation
-        await handleGenerate(result, {});
-      } else {
-        setStep("questions");
-      }
+      // Always open Phase 1: Diagnóstico to ensure meticulous personalization
+      setStep("questions");
     } catch (err: any) {
       setError(err.message || "Erro de rede ao falar com o servidor.");
       setStep("input");
@@ -357,6 +376,19 @@ export default function AIPlannerWidget({
 
               {/* Steps Area with AnimatePresence for transitions */}
               <div className="p-6 grow overflow-y-auto space-y-6">
+                {/* KedIA Stages Stepper Header */}
+                <div className="flex items-center justify-between px-3 py-2 bg-slate-50 border border-slate-200/80 rounded-2xl text-[11px] font-extrabold text-slate-500 mb-2">
+                  <div className={`flex items-center gap-1.5 px-3 py-1 rounded-xl transition-all ${step === "input" || step === "questions" ? "bg-indigo-600 text-white shadow-xs" : "text-slate-600"}`}>
+                    <span className="w-4 h-4 rounded-full bg-white/20 text-white text-[9px] flex items-center justify-center font-black">1</span>
+                    <span>Fase 1: Diagnóstico KedIA</span>
+                  </div>
+                  <div className="h-0.5 w-6 bg-slate-200" />
+                  <div className={`flex items-center gap-1.5 px-3 py-1 rounded-xl transition-all ${step === "generating" || step === "success" ? "bg-indigo-600 text-white shadow-xs" : "text-slate-600"}`}>
+                    <span className="w-4 h-4 rounded-full bg-slate-200 text-slate-700 text-[9px] flex items-center justify-center font-black">2</span>
+                    <span>Fase 2: Estrutura do Roteiro</span>
+                  </div>
+                </div>
+
                 {error && (
                   <motion.div 
                     className="p-4 bg-rose-50 border border-rose-100 rounded-2xl space-y-2 text-rose-800 text-xs font-semibold"
@@ -435,13 +467,71 @@ export default function AIPlannerWidget({
                           value={prompt}
                           onChange={(e) => setPrompt(e.target.value)}
                           placeholder="Ex: Quero fazer uma viagem de 10 dias pela Turquia em casal, passando por Istambul e Capadócia, com foco em cultura, gastronomia local e voo de balão em ritmo moderado."
-                          rows={5}
+                          rows={4}
                           className="w-full text-sm font-semibold p-4 rounded-2xl border border-slate-200 outline-none focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600 resize-none placeholder:text-slate-400 text-slate-800 transition-all shadow-xs"
                         />
                       </motion.div>
 
+                      {/* Quick Suggestions Cards */}
+                      {quickTemplates && quickTemplates.length > 0 && (
+                        <motion.div
+                          className="space-y-2 pt-1"
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.25, duration: 0.35 }}
+                        >
+                          <span className="text-[11px] font-black text-slate-500 uppercase tracking-wider block flex items-center gap-1.5">
+                            <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                            <span>Sugestões Rápidas de Roteiros:</span>
+                          </span>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {quickTemplates.map((item) => (
+                              <button
+                                key={item.label}
+                                type="button"
+                                onClick={async () => {
+                                  const textToUse = item.text || item.label;
+                                  setPrompt(textToUse);
+                                  setError("");
+                                  setStep("generating");
+                                  setLoadingMsgIdx(0);
+                                  try {
+                                    const response = await fetch("/api/gemini/evaluate-prompt", {
+                                      method: "POST",
+                                      headers: getAiHeaders({
+                                        "Content-Type": "application/json",
+                                        "Authorization": `Bearer ${token}`
+                                      }),
+                                      body: JSON.stringify({ prompt: textToUse })
+                                    });
+                                    if (!response.ok) {
+                                      throw new Error("Não foi possível carregar o diagnóstico.");
+                                    }
+                                    const result = await response.json();
+                                    setEvaluation(result);
+                                    setStep("questions");
+                                  } catch (err: any) {
+                                    setError(err.message || "Erro ao conectar com a KedIA.");
+                                    setStep("input");
+                                  }
+                                }}
+                                className="p-3 bg-gradient-to-br from-slate-50 to-indigo-50/20 hover:from-indigo-50/70 hover:to-purple-50/40 border border-slate-200 hover:border-indigo-300 rounded-xl text-left transition-all cursor-pointer group flex flex-col justify-between gap-1.5 shadow-2xs hover:shadow-xs"
+                              >
+                                <span className="text-xs font-black text-slate-800 group-hover:text-indigo-700 leading-snug line-clamp-2">
+                                  {item.label}
+                                </span>
+                                <span className="text-[10px] font-extrabold text-indigo-600 uppercase tracking-wider flex items-center gap-1">
+                                  <span>Diagnóstico KedIA</span>
+                                  <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition" />
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        </motion.div>
+                      )}
+
                       <motion.div 
-                        className="p-4 bg-indigo-50/50 border border-indigo-100 rounded-2xl text-xs font-bold text-indigo-950 flex items-start gap-2.5 leading-relaxed"
+                        className="p-3.5 bg-indigo-50/50 border border-indigo-100 rounded-2xl text-xs font-bold text-indigo-950 flex items-start gap-2.5 leading-relaxed"
                         initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.3, duration: 0.35 }}

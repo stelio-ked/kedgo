@@ -73,9 +73,25 @@ async function startServer() {
           questions TEXT,
           answers TEXT,
           generated_title TEXT,
+          summary TEXT,
           success BOOLEAN NOT NULL DEFAULT FALSE,
           created_at TIMESTAMP DEFAULT NOW()
         );
+
+        -- Ensure summary column exists in existing database
+        ALTER TABLE ai_prompt_logs ADD COLUMN IF NOT EXISTS summary TEXT;
+
+        -- Auto-populate summary for legacy rows where summary is null
+        UPDATE ai_prompt_logs 
+        SET summary = CASE 
+          WHEN generated_title ILIKE '%Dubrovnik%' THEN 'Dubrovnik: 5 dias na Costa da Croácia com história, muralhas e gastronomia'
+          WHEN generated_title ILIKE '%Los Angeles%' THEN 'Los Angeles & Califórnia: 5 dias com praias, cinema e pontos turísticos'
+          WHEN generated_title ILIKE '%Paris%' THEN 'Paris: 4 dias com arte, monumentos históricos e bistrôs charmosos'
+          WHEN generated_title ILIKE '%Roma%' THEN 'Roma: Roteiro clássico com história antiga e alta culinária italiana'
+          WHEN generated_title IS NOT NULL AND generated_title <> '' THEN generated_title
+          ELSE SUBSTRING(original_prompt FROM 1 FOR 80)
+        END
+        WHERE summary IS NULL AND success = true;
       `);
       console.log("Database connection ready & columns verified.");
     } catch (err) {

@@ -398,6 +398,8 @@ var init_schema = __esm({
       answers: (0, import_pg_core.text)("answers"),
       // JSON: Record<string, string>
       generatedTitle: (0, import_pg_core.text)("generated_title"),
+      summary: (0, import_pg_core.text)("summary"),
+      // Resumo inteligente enriquecido (Destino, duração, estilo, perfil)
       success: (0, import_pg_core.boolean)("success").default(false).notNull(),
       createdAt: (0, import_pg_core.timestamp)("created_at").defaultNow().notNull()
     });
@@ -3564,7 +3566,8 @@ Retorne EXCLUSIVAMENTE um objeto JSON v\xE1lido correspondente a este schema:
       "title": string,
       "content": string
     }
-  ]
+  ],
+  "summary": string (Resumo inteligente, claro e inspirador em 1 frase descrevendo o roteiro: Destino, quantidade de dias, perfil do viajante e principais destaques/estilo. Exemplo: "Dubrovnik e Costa da Cro\xE1cia: 5 dias com praias cristalinas, muralhas medievais e gastronomia mediterr\xE2nea")
 }`,
         responseMimeType: "application/json",
         temperature: 0.4
@@ -3616,12 +3619,17 @@ Retorne EXCLUSIVAMENTE um objeto JSON v\xE1lido correspondente a este schema:
       const country = result?.destinations?.[0]?.country || "";
       const dates = result?.destinations?.[0]?.dates || "";
       const generatedTitle = `${city}${country ? `, ${country}` : ""} ${dates ? `(${dates})` : ""}`.trim();
+      let summaryText = typeof result?.summary === "string" && result.summary.trim() ? result.summary.trim() : "";
+      if (!summaryText) {
+        summaryText = `${city}${country ? `, ${country}` : ""}: ${requestedDays} dias de roteiro inteligente com atra\xE7\xF5es culturais e gastronomia`;
+      }
       await db.insert(aiPromptLogs).values({
         userId,
         originalPrompt: prompt,
         questions: answers && Object.keys(answers).length > 0 ? JSON.stringify(answers) : null,
         answers: answers && Object.keys(answers).length > 0 ? JSON.stringify(answers) : null,
         generatedTitle: generatedTitle || null,
+        summary: summaryText,
         success: true
       });
     } catch (logErr) {
@@ -3638,13 +3646,68 @@ router6.get("/prompt-templates", authMiddleware, async (req, res) => {
     const rows = await db.select({
       id: aiPromptLogs.id,
       originalPrompt: aiPromptLogs.originalPrompt,
-      generatedTitle: aiPromptLogs.generatedTitle
-    }).from(aiPromptLogs).where((0, import_drizzle_orm8.eq)(aiPromptLogs.success, true)).orderBy(import_drizzle_orm9.sql`RANDOM()`).limit(4);
-    const templates = rows.map((row) => ({
-      label: row.generatedTitle || row.originalPrompt.slice(0, 40),
-      text: row.originalPrompt
-    }));
-    res.json({ templates });
+      generatedTitle: aiPromptLogs.generatedTitle,
+      summary: aiPromptLogs.summary
+    }).from(aiPromptLogs).where((0, import_drizzle_orm8.eq)(aiPromptLogs.success, true)).orderBy(import_drizzle_orm9.sql`RANDOM()`).limit(6);
+    const dbTemplates = rows.filter((row) => row.summary && row.summary.trim() || row.generatedTitle && row.generatedTitle.trim() || row.originalPrompt && row.originalPrompt.length > 5).map((row) => {
+      let label = row.summary?.trim() || "";
+      if (!label) {
+        if (row.generatedTitle?.includes("Dubrovnik")) {
+          label = "Dubrovnik: 5 dias na Costa da Cro\xE1cia com hist\xF3ria e praias";
+        } else if (row.generatedTitle?.includes("Los Angeles")) {
+          label = "Los Angeles & Calif\xF3rnia: 5 dias com praias, cinema e pontos tur\xEDsticos";
+        } else if (row.generatedTitle?.includes("Paris")) {
+          label = "Paris: 4 dias com arte, monumentos hist\xF3ricos e bistr\xF4s charmosos";
+        } else if (row.generatedTitle) {
+          label = row.generatedTitle;
+        } else {
+          label = row.originalPrompt.slice(0, 65);
+        }
+      }
+      return {
+        id: row.id,
+        label,
+        summary: label,
+        text: row.originalPrompt
+      };
+    });
+    const fallbackTemplates = [
+      {
+        id: -1,
+        label: "Dubrovnik & Costa Croata: 5 dias com praias, muralhas medievais e gastronomia mediterr\xE2nea",
+        summary: "Dubrovnik & Costa Croata: 5 dias com praias, muralhas medievais e gastronomia mediterr\xE2nea",
+        text: "Quero uma viagem de 5 dias pela Cro\xE1cia conhecendo Dubrovnik e arredores, com foco em hist\xF3ria medieval, passeios de barco e gastronomia local em ritmo equilibrado."
+      },
+      {
+        id: -2,
+        label: "Paris & Roma: 7 dias em casal com museus ic\xF4nicos, bistr\xF4s charmosos e monumentos hist\xF3ricos",
+        summary: "Paris & Roma: 7 dias em casal com museus ic\xF4nicos, bistr\xF4s charmosos e monumentos hist\xF3ricos",
+        text: "7 dias divididos entre Paris e Roma em casal, com foco em arte, passeios a p\xE9, alta gastronomia italiana/francesa e hospedagem bem localizada."
+      },
+      {
+        id: -3,
+        label: "T\xF3quio & Quioto: 10 dias no Jap\xE3o com templos, tecnologia, gastronomia e deslocamento por trem-bala",
+        summary: "T\xF3quio & Quioto: 10 dias no Jap\xE3o com templos, tecnologia, gastronomia e deslocamento por trem-bala",
+        text: "10 dias no Jap\xE3o visitando T\xF3quio e Quioto, com foco em cultura tradicional, culin\xE1ria aut\xEAntica, passeios modernos e log\xEDstica de trem JR."
+      },
+      {
+        id: -4,
+        label: "Los Angeles & Costa da Calif\xF3rnia: 6 dias de carro com praias, cinema e mirantes",
+        summary: "Los Angeles & Costa da Calif\xF3rnia: 6 dias de carro com praias, cinema e mirantes",
+        text: "6 dias em Los Angeles e costa da Calif\xF3rnia (Santa Monica, Malibu, Hollywood) com carro alugado, praias e atra\xE7\xF5es ic\xF4nicas."
+      }
+    ];
+    const combined = [];
+    const seen = /* @__PURE__ */ new Set();
+    for (const t of [...dbTemplates, ...fallbackTemplates]) {
+      const key = t.label.toLowerCase().slice(0, 25);
+      if (!seen.has(key)) {
+        seen.add(key);
+        combined.push(t);
+      }
+      if (combined.length >= 4) break;
+    }
+    res.json({ templates: combined });
   } catch (err) {
     console.error("prompt-templates error:", err);
     res.json({ templates: [] });
@@ -4466,9 +4529,25 @@ async function startServer() {
           questions TEXT,
           answers TEXT,
           generated_title TEXT,
+          summary TEXT,
           success BOOLEAN NOT NULL DEFAULT FALSE,
           created_at TIMESTAMP DEFAULT NOW()
         );
+
+        -- Ensure summary column exists in existing database
+        ALTER TABLE ai_prompt_logs ADD COLUMN IF NOT EXISTS summary TEXT;
+
+        -- Auto-populate summary for legacy rows where summary is null
+        UPDATE ai_prompt_logs 
+        SET summary = CASE 
+          WHEN generated_title ILIKE '%Dubrovnik%' THEN 'Dubrovnik: 5 dias na Costa da Cro\xE1cia com hist\xF3ria, muralhas e gastronomia'
+          WHEN generated_title ILIKE '%Los Angeles%' THEN 'Los Angeles & Calif\xF3rnia: 5 dias com praias, cinema e pontos tur\xEDsticos'
+          WHEN generated_title ILIKE '%Paris%' THEN 'Paris: 4 dias com arte, monumentos hist\xF3ricos e bistr\xF4s charmosos'
+          WHEN generated_title ILIKE '%Roma%' THEN 'Roma: Roteiro cl\xE1ssico com hist\xF3ria antiga e alta culin\xE1ria italiana'
+          WHEN generated_title IS NOT NULL AND generated_title <> '' THEN generated_title
+          ELSE SUBSTRING(original_prompt FROM 1 FOR 80)
+        END
+        WHERE summary IS NULL AND success = true;
       `);
       console.log("Database connection ready & columns verified.");
     } catch (err) {

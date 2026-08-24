@@ -369,6 +369,7 @@ export const aiPromptLogs = pgTable("ai_prompt_logs", {
   questions: text("questions"),       // JSON: SuggestedQuestion[]
   answers: text("answers"),           // JSON: Record<string, string>
   generatedTitle: text("generated_title"),
+  summary: text("summary"),           // Resumo inteligente enriquecido (Destino, duração, estilo, perfil)
   success: boolean("success").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
