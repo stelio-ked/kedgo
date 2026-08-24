@@ -217,8 +217,11 @@ router.post("/invite", authMiddleware, async (req: AuthRequest, res) => {
       console.warn("[Referral Invite - Insert Warning]", insertErr.message);
     }
 
-    // Montar URL de convite
-    const appUrl = (process.env.APP_URL || "https://crm-ked-kedgo.crl0uj.easypanel.host").replace(/\/$/, "");
+    // Montar URL de convite usando APP_URL ou origin da requisição
+    const host = req.headers["x-forwarded-host"] || req.get("host") || "kedgo.pro";
+    const proto = req.headers["x-forwarded-proto"] || req.protocol || "https";
+    const defaultOrigin = `${proto}://${host}`;
+    const appUrl = (process.env.APP_URL && process.env.APP_URL.trim() ? process.env.APP_URL.trim() : defaultOrigin).replace(/\/$/, "");
     const inviteUrl = `${appUrl}?ref=${referralCode}`;
 
     // Montar e enviar e-mail
@@ -287,7 +290,10 @@ router.post("/resend", authMiddleware, async (req: AuthRequest, res) => {
     const [referrer] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
     if (!referrer) return res.status(404).json({ error: "Usuário não encontrado" });
 
-    const appUrl = (process.env.APP_URL || "https://crm-ked-kedgo.crl0uj.easypanel.host").replace(/\/$/, "");
+    const host = req.headers["x-forwarded-host"] || req.get("host") || "kedgo.pro";
+    const proto = req.headers["x-forwarded-proto"] || req.protocol || "https";
+    const defaultOrigin = `${proto}://${host}`;
+    const appUrl = (process.env.APP_URL && process.env.APP_URL.trim() ? process.env.APP_URL.trim() : defaultOrigin).replace(/\/$/, "");
     const inviteUrl = `${appUrl}?ref=${invite.referralCode}`;
 
     const emailPayload = buildReferralInviteEmail({
@@ -304,19 +310,25 @@ router.post("/resend", authMiddleware, async (req: AuthRequest, res) => {
       .where(eq(referralInvites.id, inviteId));
 
     let sent = false;
+    let emailError: string | null = null;
     try {
       const result = await sendEmail(emailPayload);
       sent = result.sent;
+      if (!sent) {
+        emailError = "Servidor SMTP não configurado (verifique SMTP_PASS nas variáveis do Easypanel).";
+      }
     } catch (sendErr: any) {
-      console.warn("[Referral Resend Email Warning]", sendErr.message);
+      console.error("[Referral Resend Email Error]", sendErr.message);
+      emailError = sendErr.message;
     }
 
     res.json({
       success: true,
       sent,
       message: sent
-        ? `Convite reenviado para ${invite.inviteeEmail}!`
-        : `Convite registrado novamente. O e-mail será entregue em breve.`,
+        ? `Convite reenviado com sucesso para ${invite.inviteeEmail}!`
+        : `Convite registrado! ${emailError || "Aguardando envio pelo servidor de e-mail."}`,
+      emailError,
     });
   } catch (err: any) {
     console.error("[Referral Resend Error]", err.message);

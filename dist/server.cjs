@@ -1011,7 +1011,10 @@ var init_referral = __esm({
         } catch (insertErr) {
           console.warn("[Referral Invite - Insert Warning]", insertErr.message);
         }
-        const appUrl = (process.env.APP_URL || "https://crm-ked-kedgo.crl0uj.easypanel.host").replace(/\/$/, "");
+        const host = req.headers["x-forwarded-host"] || req.get("host") || "kedgo.pro";
+        const proto = req.headers["x-forwarded-proto"] || req.protocol || "https";
+        const defaultOrigin = `${proto}://${host}`;
+        const appUrl = (process.env.APP_URL && process.env.APP_URL.trim() ? process.env.APP_URL.trim() : defaultOrigin).replace(/\/$/, "");
         const inviteUrl = `${appUrl}?ref=${referralCode}`;
         const emailPayload = buildReferralInviteEmail({
           referrerName: referrer.name || "Um amigo",
@@ -1052,7 +1055,10 @@ var init_referral = __esm({
         }
         const [referrer] = await db.select().from(users).where((0, import_drizzle_orm3.eq)(users.id, userId)).limit(1);
         if (!referrer) return res.status(404).json({ error: "Usu\xE1rio n\xE3o encontrado" });
-        const appUrl = (process.env.APP_URL || "https://crm-ked-kedgo.crl0uj.easypanel.host").replace(/\/$/, "");
+        const host = req.headers["x-forwarded-host"] || req.get("host") || "kedgo.pro";
+        const proto = req.headers["x-forwarded-proto"] || req.protocol || "https";
+        const defaultOrigin = `${proto}://${host}`;
+        const appUrl = (process.env.APP_URL && process.env.APP_URL.trim() ? process.env.APP_URL.trim() : defaultOrigin).replace(/\/$/, "");
         const inviteUrl = `${appUrl}?ref=${invite.referralCode}`;
         const emailPayload = buildReferralInviteEmail({
           referrerName: referrer.name || "Um amigo",
@@ -1062,16 +1068,22 @@ var init_referral = __esm({
         });
         await db.update(referralInvites).set({ sentAt: import_drizzle_orm3.sql`NOW()` }).where((0, import_drizzle_orm3.eq)(referralInvites.id, inviteId));
         let sent = false;
+        let emailError = null;
         try {
           const result = await sendEmail(emailPayload);
           sent = result.sent;
+          if (!sent) {
+            emailError = "Servidor SMTP n\xE3o configurado (verifique SMTP_PASS nas vari\xE1veis do Easypanel).";
+          }
         } catch (sendErr) {
-          console.warn("[Referral Resend Email Warning]", sendErr.message);
+          console.error("[Referral Resend Email Error]", sendErr.message);
+          emailError = sendErr.message;
         }
         res.json({
           success: true,
           sent,
-          message: sent ? `Convite reenviado para ${invite.inviteeEmail}!` : `Convite registrado novamente. O e-mail ser\xE1 entregue em breve.`
+          message: sent ? `Convite reenviado com sucesso para ${invite.inviteeEmail}!` : `Convite registrado! ${emailError || "Aguardando envio pelo servidor de e-mail."}`,
+          emailError
         });
       } catch (err) {
         console.error("[Referral Resend Error]", err.message);
@@ -4471,6 +4483,20 @@ async function startServer() {
     res.json({
       status: "ok",
       message: "Servidor online com Postgres suportado!"
+    });
+  });
+  app.get("/api/test-email-status", async (req, res) => {
+    const smtpHost = process.env.SMTP_HOST || "smtp.hostinger.com";
+    const smtpPort = process.env.SMTP_PORT || "465";
+    const smtpUser = process.env.SMTP_USER || process.env.GMAIL_USER || "contato@kedgo.pro";
+    const hasPass = Boolean(process.env.SMTP_PASS || process.env.SMTP_PASSWORD || process.env.GMAIL_APP_PASSWORD);
+    res.json({
+      status: "ok",
+      smtpConfigured: hasPass,
+      host: smtpHost,
+      port: smtpPort,
+      user: smtpUser,
+      message: hasPass ? "Configura\xE7\xF5es SMTP detectadas no ambiente. Pronto para envio real." : "AVISO: Vari\xE1vel SMTP_PASS (ou SMTP_PASSWORD) n\xE3o encontrada no Easypanel. Os e-mails est\xE3o em modo de simula\xE7\xE3o no log."
     });
   });
   app.get("/api/ping-db", async (req, res) => {

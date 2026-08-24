@@ -97,6 +97,24 @@ async function startServer() {
     });
   });
 
+  app.get("/api/test-email-status", async (req, res) => {
+    const smtpHost = process.env.SMTP_HOST || "smtp.hostinger.com";
+    const smtpPort = process.env.SMTP_PORT || "465";
+    const smtpUser = process.env.SMTP_USER || process.env.GMAIL_USER || "contato@kedgo.pro";
+    const hasPass = Boolean(process.env.SMTP_PASS || process.env.SMTP_PASSWORD || process.env.GMAIL_APP_PASSWORD);
+    
+    res.json({
+      status: "ok",
+      smtpConfigured: hasPass,
+      host: smtpHost,
+      port: smtpPort,
+      user: smtpUser,
+      message: hasPass
+        ? "Configurações SMTP detectadas no ambiente. Pronto para envio real."
+        : "AVISO: Variável SMTP_PASS (ou SMTP_PASSWORD) não encontrada no Easypanel. Os e-mails estão em modo de simulação no log.",
+    });
+  });
+
   app.get("/api/ping-db", async (req, res) => {
     if (!db) {
       return res.status(503).json({
