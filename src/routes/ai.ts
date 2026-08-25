@@ -14,67 +14,86 @@ const router = Router();
 
 router.post("/evaluate-prompt", authMiddleware, geminiQuotaMiddleware, async (req: AuthRequest, res) => {
   try {
-    const { prompt } = req.body;
+    const { prompt, originCity, startDate, durationDays } = req.body;
     if (!prompt || typeof prompt !== "string" || !prompt.trim()) {
       return res.status(400).json({ error: "O prompt não pode ser vazio." });
     }
 
     const userApiKey = (req.headers["x-gemini-api-key"] as string)?.trim() || process.env.GEMINI_API_KEY;
 
+    const hasOrigin = Boolean(originCity && String(originCity).trim());
+    const hasDates = Boolean((startDate && String(startDate).trim()) || (durationDays && Number(durationDays) > 0));
+
+    const buildFallbackQuestions = () => {
+      const questions = [];
+      if (!hasOrigin) {
+        questions.push({
+          id: "origin_departure",
+          category: "Origem e Ponto de Partida",
+          question: "De qual cidade você irá partir (origem) e já tem aeroporto ou meio de preferência?",
+          options: ["São Paulo (GRU / CGH)", "Rio de Janeiro (GIG / SDU)", "Belo Horizonte / Brasília", "Lisboa / Porto (Portugal)", "Outra cidade / Sem voo"],
+          placeholder: "Ex: Saindo de São Paulo (Guarulhos)..."
+        });
+      }
+      if (!hasDates) {
+        questions.push({
+          id: "duration_dates",
+          category: "Datas e Duração Exata",
+          question: "Quantos dias exatos durará a viagem e qual a data ou mês de partida?",
+          options: ["15 dias (Roteiro Completo)", "10 dias", "7 dias (1 Semana)", "5 dias", "20 dias ou mais"],
+          placeholder: "Ex: 15 dias a partir de 01 de Outubro de 2026..."
+        });
+      }
+      questions.push(
+        {
+          id: "destination_transport",
+          category: "Destinos e Deslocamento",
+          question: "Quais cidades/regiões você deseja conhecer e como prefere se deslocar?",
+          options: ["Trens de alta velocidade (Frecciarossa/Italo/TGV)", "Carro alugado (Road trip cênica)", "Voos internos quando necessário", "Mistura de trem e transfer privativo", "Transporte público e a pé"],
+          placeholder: "Ex: Trens de alta velocidade entre grandes cidades..."
+        },
+        {
+          id: "group_profile",
+          category: "Perfil do Grupo",
+          question: "Quantas pessoas irão viajar e qual o perfil do grupo?",
+          options: ["Casal (Romântico / Lua de Mel)", "Casal entusiasta de fotografia e cenários instagramáveis", "Família com crianças", "Grupo de Amigos", "Solo / Viajante Individual"],
+          placeholder: "Ex: Casal entusiasta de fotografia..."
+        },
+        {
+          id: "budget_pace",
+          category: "Orçamento e Estilo de Viagem",
+          question: "Qual a faixa de orçamento e o ritmo desejado para os dias?",
+          options: ["Moderado (Hotéis 4*, boa localização, alguns jantares especiais)", "Econômico (Hotéis 3* bem localizados, transporte público)", "Luxo & Exclusivo (Hotéis 5*, transfers privados)", "Moderado (Ritmo Intenso - Ver o máximo)"],
+          placeholder: "Ex: Moderado, ritmo equilibrado..."
+        },
+        {
+          id: "interests_mustsee",
+          category: "Interesses e Experiências",
+          question: "Quais são os pilares prioritários da viagem e há atrações obrigatórias?",
+          options: ["Museus e história clássica (Vaticano, Coliseu, Uffizi)", "Alta gastronomia e degustação de vinhos locais", "Cenários fotográficos, mirantes e natureza", "Compras, moda e vida urbana", "Um pouco de tudo (Cultura, boa comida e romance)"],
+          placeholder: "Ex: Museus clássicos, gastronomia e belas fotos..."
+        }
+      );
+      return questions;
+    };
+
     if (!userApiKey) {
       return res.json({
         isSpecific: false,
-        reason: "Olá! Sou a KedIA, sua Arquiteta de Itinerários. Para calibrarmos perfeitamente a logística, origem, datas e ritmo da sua viagem, responda aos pontos rápidos abaixo:",
-        suggestedQuestions: [
-          {
-            id: "origin_departure",
-            category: "Origem e Ponto de Partida",
-            question: "De qual cidade você irá partir (origem) e já tem aeroporto ou meio de preferência?",
-            options: ["São Paulo (GRU / CGH)", "Rio de Janeiro (GIG / SDU)", "Belo Horizonte / Brasília", "Lisboa / Porto (Portugal)", "Outra cidade / Sem voo"],
-            placeholder: "Ex: Saindo de São Paulo (Guarulhos)..."
-          },
-          {
-            id: "duration_dates",
-            category: "Datas e Duração Exata",
-            question: "Quantos dias exatos durará a viagem e qual a data ou mês de partida?",
-            options: ["15 dias (Roteiro Completo)", "10 dias", "7 dias (1 Semana)", "5 dias", "20 dias ou mais"],
-            placeholder: "Ex: 15 dias a partir de 01 de Outubro de 2026..."
-          },
-          {
-            id: "destination_transport",
-            category: "Destinos e Deslocamento",
-            question: "Quais cidades/regiões você deseja conhecer e como prefere se deslocar?",
-            options: ["Marrakech e Cidades Históricas (Transfer & Trem)", "Paris & Roma (Trem de Alta Velocidade)", "Tóquio & Kyoto (Trens JR & Metrô)", "Orlando & Miami (Carro Alugado)", "Costa e Praias (Carro / Barco)"],
-            placeholder: "Ex: Marrakech, Chefchaouen e deserto com transfer privativo..."
-          },
-          {
-            id: "group_profile",
-            category: "Perfil do Grupo",
-            question: "Quantas pessoas irão viajar e qual o perfil do grupo?",
-            options: ["Casal (Romântico)", "Família com crianças", "Grupo de Amigos", "Solo / Viajante Individual", "Melhor Idade"],
-            placeholder: "Ex: Casal em lua de mel..."
-          },
-          {
-            id: "budget_pace",
-            category: "Orçamento e Estilo de Viagem",
-            question: "Qual a faixa de orçamento e o ritmo desejado para os dias?",
-            options: ["Moderado / Confortável (Ritmo Equilibrado)", "Econômico / Mochileiro (Ritmo Intenso)", "Luxo & Exclusivo (Ritmo Relaxado)", "Moderado (Ritmo Intenso - Ver o máximo)"],
-            placeholder: "Ex: Orçamento moderado, ritmo relaxado sem correria..."
-          },
-          {
-            id: "interests_mustsee",
-            category: "Interesses e Experiências",
-            question: "Quais são os pilares prioritários da viagem e há atrações obrigatórias?",
-            options: ["Gastronomia & Culinária Local + Museus", "Natureza, Deserto & Paisagens", "História, Monumentos & Cultura", "Compras, Mercados & Vida Noturna", "Parques & Aventura"],
-            placeholder: "Ex: Foco gastronômico, souks tradicionais e noite no deserto..."
-          }
-        ]
+        reason: "Olá! Sou a KedIA, sua Arquiteta de Itinerários. Para calibrarmos perfeitamente a logística e o estilo da sua viagem, responda aos pontos rápidos abaixo:",
+        suggestedQuestions: buildFallbackQuestions()
       });
     }
 
+    const alreadyProvidedInfo = [
+      hasOrigin ? `- Cidade de Origem: "${originCity}"` : null,
+      startDate ? `- Data de Início: "${startDate}"` : null,
+      durationDays ? `- Duração Total: "${durationDays} dias"` : null,
+    ].filter(Boolean).join("\n");
+
     const response = await generateContentWithRetry({
       model: "gemini-3.7-flash",
-      contents: `Prompt do Usuário: "${prompt}"`,
+      contents: `Prompt do Usuário: "${prompt}"\n${alreadyProvidedInfo ? `Informações já fornecidas no formulário:\n${alreadyProvidedInfo}` : ""}`,
       config: {
         systemInstruction: `Você é a KedIA, Consultora Sênior de Viagens e Arquiteta de Itinerários hiperpersonalizados.
 Sua missão é criar roteiros eficientes, realistas, financeiramente precisos e atualizados.
@@ -87,23 +106,22 @@ Critérios essenciais para um roteiro completo:
 4. Orçamento e Estilo de Viagem (faixa de custo: Econômico, Moderado ou Luxo; ritmo: Intenso, Equilibrado ou Relaxado).
 5. Interesses e Experiências (gastronomia, cultura, natureza, compras, atrações obrigatórias e restrições).
 
-REGRAS RÍGIDAS DE AVALIAÇÃO:
+🚨 REGRAS CRÍTICAS DE NÃO-REDUNDÂNCIA:
+${hasOrigin ? `- A ORIGEM JÁ FOI INFORMADA ("${originCity}"). NUNCA faça pergunta sobre cidade de origem/partida.` : ""}
+${hasDates ? `- AS DATAS/DURAÇÃO JÁ FORAM INFORMADAS (${startDate ? `Início: ${startDate}, ` : ""}${durationDays ? `${durationDays} dias` : ""}). NUNCA faça pergunta sobre duração em dias ou mês de viagem.` : ""}
+- Pergunte APENAS sobre o que ainda não foi especificado (geralmente: meio de transporte/deslocamento entre cidades, perfil do grupo, orçamento/estilo e interesses/experiências).
+- Retorne no máximo 3 a 4 perguntas objetivas e relevantes.
 - Sempre retorne "isSpecific": false para abrir a Fase 1 de Diagnóstico.
-- Estruture de 4 a 6 perguntas objetivas, gentis e inteligentes em português do Brasil organizadas pelos blocos do Diagnóstico do Viajante, incluindo SEMPRE:
-  * Origem de partida (cidade de saída para voos e logística).
-  * Datas de início e duração exata em dias.
-  * Cidades e locomoção.
-  * Perfil e orçamento.
 - Para cada pergunta, ofereça 4 a 5 opções práticas e inspiradoras de resposta rápida ("options"), além de um campo "category" e um "placeholder" com exemplo claro.
 
 Retorne EXCLUSIVAMENTE um objeto JSON válido correspondente a este schema:
 {
   "isSpecific": boolean,
-  "reason": string (resumo acolhedor da KedIA explicando os pontos que serão personalizados com as respostas),
+  "reason": string (resumo acolhedor e inteligente da KedIA reconhecendo o destino e explicando os pontos que serão refinados nas perguntas),
   "suggestedQuestions": [
     {
-      "id": string (ex: "origin_departure", "duration_dates", "destination_transport", "group_profile", "budget_pace", "interests_mustsee"),
-      "category": string (ex: "Origem e Ponto de Partida", "Datas e Duração Exata", "Destinos e Deslocamento", "Perfil do Grupo", "Orçamento e Estilo", "Interesses e Experiências"),
+      "id": string (ex: "destination_transport", "group_profile", "budget_pace", "interests_mustsee"),
+      "category": string (ex: "Destinos e Deslocamento", "Perfil do Grupo", "Orçamento e Estilo", "Interesses e Experiências"),
       "question": string,
       "options": string[],
       "placeholder": string
@@ -117,57 +135,23 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido correspondente a este schema:
 
     const text = response.text || "{}";
     const result = JSON.parse(text.trim());
+
+    // Extra safeguard: Filter out origin/date questions if already provided by form
+    if (result && Array.isArray(result.suggestedQuestions)) {
+      result.suggestedQuestions = result.suggestedQuestions.filter((q: any) => {
+        if (hasOrigin && (q.id === "origin_departure" || q.category?.toLowerCase().includes("origem"))) return false;
+        if (hasDates && (q.id === "duration_dates" || q.category?.toLowerCase().includes("duração") || q.category?.toLowerCase().includes("datas"))) return false;
+        return true;
+      });
+    }
+
     res.json(result);
   } catch (err: any) {
     console.warn("Evaluation fallback triggered:", err?.message || err);
-    // Graceful fallback to avoid blocking the user
     res.json({
       isSpecific: false,
       reason: "Olá! Sou a KedIA. Vamos calibrar os detalhes do seu roteiro para ficar perfeito! Responda às opções rápidas abaixo:",
-      suggestedQuestions: [
-        {
-          id: "origin_departure",
-          category: "Origem e Ponto de Partida",
-          question: "De qual cidade você irá partir?",
-          options: ["São Paulo (GRU)", "Rio de Janeiro (GIG)", "Belo Horizonte / Brasília", "Lisboa / Porto", "Outra cidade"],
-          placeholder: "Ex: Saindo de São Paulo..."
-        },
-        {
-          id: "duration_dates",
-          category: "Datas e Duração Exata",
-          question: "Quantos dias exatos durará a viagem e em qual data ou mês?",
-          options: ["15 dias", "10 dias", "7 dias", "5 dias", "20 dias ou mais"],
-          placeholder: "Ex: 15 dias a partir de 01 de Outubro..."
-        },
-        {
-          id: "destination_transport",
-          category: "Destinos e Deslocamento",
-          question: "Quais cidades você deseja conhecer e como prefere se locomover?",
-          options: ["Cidades Históricas (Trem & Transfer)", "Metrópoles (Metrô & A pé)", "Costa e Praias (Carro Alugado)", "Região Serrana (Carro / Transfer)"],
-          placeholder: "Ex: Roteiro cultural de trem..."
-        },
-        {
-          id: "group_profile",
-          category: "Perfil do Grupo",
-          question: "Qual é o perfil de viajantes do grupo?",
-          options: ["Casal (Romântico)", "Família com crianças", "Grupo de Amigos", "Solo / Individual", "Melhor Idade"],
-          placeholder: "Ex: Casal..."
-        },
-        {
-          id: "budget_pace",
-          category: "Orçamento e Estilo de Viagem",
-          question: "Qual o seu orçamento e ritmo desejado?",
-          options: ["Moderado (Equilibrado)", "Econômico (Intenso)", "Luxo (Relaxado)"],
-          placeholder: "Ex: Moderado..."
-        },
-        {
-          id: "interests_mustsee",
-          category: "Interesses e Experiências",
-          question: "Quais são os pilares prioritários da viagem?",
-          options: ["Gastronomia & Culinária Local", "História, Museus & Monumentos", "Natureza & Paisagens", "Compras & Vida Noturna", "Aventura & Parques"],
-          placeholder: "Ex: Foco em gastronomia e cultura..."
-        }
-      ]
+      suggestedQuestions: buildFallbackQuestions()
     });
   }
 });
@@ -427,6 +411,7 @@ DIRETRIZES DA KEDIA PARA O ROTEIRO:
 
 Retorne EXCLUSIVAMENTE um objeto JSON válido correspondente a este schema:
 {
+  "title": string (Título curto, criativo e memorável para o roteiro abrangendo todas as cidades e experiências principais. Ex: "Grand Tour pela Itália 🇮🇹", "Lua de Mel na Toscana & Costa Amalfitana 🥂", "Cultura e Tradição no Japão ⛩️", "Aventura Completa em Marrocos 🐪". Máx 50 caracteres),
   "destinations": [
     {
       "id": string (ex: "dest-1"),
@@ -655,12 +640,18 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido correspondente a este schema:
       const userId = (req as AuthRequest).user?.id ?? null;
       const city = result?.destinations?.[0]?.city || "";
       const country = result?.destinations?.[0]?.country || "";
-      const generatedTitle = `${city}${country ? `, ${country}` : ""} (${totalDateRangeStr})`.trim();
+      const fallbackTitle = `${city}${country ? `, ${country}` : ""} (${totalDateRangeStr})`.trim();
+      const generatedTitle = (result?.title && typeof result.title === "string" && result.title.trim())
+        ? result.title.trim()
+        : fallbackTitle;
+      
+      // Ensure result.title is set for frontend consumption
+      result.title = generatedTitle;
       
       // Compute a clean, rich summary combining AI output or fallback
       let summaryText = typeof result?.summary === "string" && result.summary.trim() ? result.summary.trim() : "";
       if (!summaryText) {
-        summaryText = `${city}${country ? `, ${country}` : ""}: ${requestedDays} dias de roteiro com partida de ${originCity} (${totalDateRangeStr})`;
+        summaryText = `${generatedTitle}: ${requestedDays} dias de roteiro com partida de ${originCity} (${totalDateRangeStr})`;
       }
 
       await db.insert(aiPromptLogs).values({

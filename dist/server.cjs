@@ -3186,64 +3186,82 @@ function inferActivityType(location = "", notes = "") {
 var router6 = (0, import_express6.Router)();
 router6.post("/evaluate-prompt", authMiddleware, geminiQuotaMiddleware, async (req, res) => {
   try {
-    const { prompt } = req.body;
+    const { prompt, originCity, startDate, durationDays } = req.body;
     if (!prompt || typeof prompt !== "string" || !prompt.trim()) {
       return res.status(400).json({ error: "O prompt n\xE3o pode ser vazio." });
     }
     const userApiKey = req.headers["x-gemini-api-key"]?.trim() || process.env.GEMINI_API_KEY;
+    const hasOrigin = Boolean(originCity && String(originCity).trim());
+    const hasDates = Boolean(startDate && String(startDate).trim() || durationDays && Number(durationDays) > 0);
+    const buildFallbackQuestions2 = () => {
+      const questions = [];
+      if (!hasOrigin) {
+        questions.push({
+          id: "origin_departure",
+          category: "Origem e Ponto de Partida",
+          question: "De qual cidade voc\xEA ir\xE1 partir (origem) e j\xE1 tem aeroporto ou meio de prefer\xEAncia?",
+          options: ["S\xE3o Paulo (GRU / CGH)", "Rio de Janeiro (GIG / SDU)", "Belo Horizonte / Bras\xEDlia", "Lisboa / Porto (Portugal)", "Outra cidade / Sem voo"],
+          placeholder: "Ex: Saindo de S\xE3o Paulo (Guarulhos)..."
+        });
+      }
+      if (!hasDates) {
+        questions.push({
+          id: "duration_dates",
+          category: "Datas e Dura\xE7\xE3o Exata",
+          question: "Quantos dias exatos durar\xE1 a viagem e qual a data ou m\xEAs de partida?",
+          options: ["15 dias (Roteiro Completo)", "10 dias", "7 dias (1 Semana)", "5 dias", "20 dias ou mais"],
+          placeholder: "Ex: 15 dias a partir de 01 de Outubro de 2026..."
+        });
+      }
+      questions.push(
+        {
+          id: "destination_transport",
+          category: "Destinos e Deslocamento",
+          question: "Quais cidades/regi\xF5es voc\xEA deseja conhecer e como prefere se deslocar?",
+          options: ["Trens de alta velocidade (Frecciarossa/Italo/TGV)", "Carro alugado (Road trip c\xEAnica)", "Voos internos quando necess\xE1rio", "Mistura de trem e transfer privativo", "Transporte p\xFAblico e a p\xE9"],
+          placeholder: "Ex: Trens de alta velocidade entre grandes cidades..."
+        },
+        {
+          id: "group_profile",
+          category: "Perfil do Grupo",
+          question: "Quantas pessoas ir\xE3o viajar e qual o perfil do grupo?",
+          options: ["Casal (Rom\xE2ntico / Lua de Mel)", "Casal entusiasta de fotografia e cen\xE1rios instagram\xE1veis", "Fam\xEDlia com crian\xE7as", "Grupo de Amigos", "Solo / Viajante Individual"],
+          placeholder: "Ex: Casal entusiasta de fotografia..."
+        },
+        {
+          id: "budget_pace",
+          category: "Or\xE7amento e Estilo de Viagem",
+          question: "Qual a faixa de or\xE7amento e o ritmo desejado para os dias?",
+          options: ["Moderado (Hot\xE9is 4*, boa localiza\xE7\xE3o, alguns jantares especiais)", "Econ\xF4mico (Hot\xE9is 3* bem localizados, transporte p\xFAblico)", "Luxo & Exclusivo (Hot\xE9is 5*, transfers privados)", "Moderado (Ritmo Intenso - Ver o m\xE1ximo)"],
+          placeholder: "Ex: Moderado, ritmo equilibrado..."
+        },
+        {
+          id: "interests_mustsee",
+          category: "Interesses e Experi\xEAncias",
+          question: "Quais s\xE3o os pilares priorit\xE1rios da viagem e h\xE1 atra\xE7\xF5es obrigat\xF3rias?",
+          options: ["Museus e hist\xF3ria cl\xE1ssica (Vaticano, Coliseu, Uffizi)", "Alta gastronomia e degusta\xE7\xE3o de vinhos locais", "Cen\xE1rios fotogr\xE1ficos, mirantes e natureza", "Compras, moda e vida urbana", "Um pouco de tudo (Cultura, boa comida e romance)"],
+          placeholder: "Ex: Museus cl\xE1ssicos, gastronomia e belas fotos..."
+        }
+      );
+      return questions;
+    };
     if (!userApiKey) {
       return res.json({
         isSpecific: false,
-        reason: "Ol\xE1! Sou a KedIA, sua Arquiteta de Itiner\xE1rios. Para calibrarmos perfeitamente a log\xEDstica, origem, datas e ritmo da sua viagem, responda aos pontos r\xE1pidos abaixo:",
-        suggestedQuestions: [
-          {
-            id: "origin_departure",
-            category: "Origem e Ponto de Partida",
-            question: "De qual cidade voc\xEA ir\xE1 partir (origem) e j\xE1 tem aeroporto ou meio de prefer\xEAncia?",
-            options: ["S\xE3o Paulo (GRU / CGH)", "Rio de Janeiro (GIG / SDU)", "Belo Horizonte / Bras\xEDlia", "Lisboa / Porto (Portugal)", "Outra cidade / Sem voo"],
-            placeholder: "Ex: Saindo de S\xE3o Paulo (Guarulhos)..."
-          },
-          {
-            id: "duration_dates",
-            category: "Datas e Dura\xE7\xE3o Exata",
-            question: "Quantos dias exatos durar\xE1 a viagem e qual a data ou m\xEAs de partida?",
-            options: ["15 dias (Roteiro Completo)", "10 dias", "7 dias (1 Semana)", "5 dias", "20 dias ou mais"],
-            placeholder: "Ex: 15 dias a partir de 01 de Outubro de 2026..."
-          },
-          {
-            id: "destination_transport",
-            category: "Destinos e Deslocamento",
-            question: "Quais cidades/regi\xF5es voc\xEA deseja conhecer e como prefere se deslocar?",
-            options: ["Marrakech e Cidades Hist\xF3ricas (Transfer & Trem)", "Paris & Roma (Trem de Alta Velocidade)", "T\xF3quio & Kyoto (Trens JR & Metr\xF4)", "Orlando & Miami (Carro Alugado)", "Costa e Praias (Carro / Barco)"],
-            placeholder: "Ex: Marrakech, Chefchaouen e deserto com transfer privativo..."
-          },
-          {
-            id: "group_profile",
-            category: "Perfil do Grupo",
-            question: "Quantas pessoas ir\xE3o viajar e qual o perfil do grupo?",
-            options: ["Casal (Rom\xE2ntico)", "Fam\xEDlia com crian\xE7as", "Grupo de Amigos", "Solo / Viajante Individual", "Melhor Idade"],
-            placeholder: "Ex: Casal em lua de mel..."
-          },
-          {
-            id: "budget_pace",
-            category: "Or\xE7amento e Estilo de Viagem",
-            question: "Qual a faixa de or\xE7amento e o ritmo desejado para os dias?",
-            options: ["Moderado / Confort\xE1vel (Ritmo Equilibrado)", "Econ\xF4mico / Mochileiro (Ritmo Intenso)", "Luxo & Exclusivo (Ritmo Relaxado)", "Moderado (Ritmo Intenso - Ver o m\xE1ximo)"],
-            placeholder: "Ex: Or\xE7amento moderado, ritmo relaxado sem correria..."
-          },
-          {
-            id: "interests_mustsee",
-            category: "Interesses e Experi\xEAncias",
-            question: "Quais s\xE3o os pilares priorit\xE1rios da viagem e h\xE1 atra\xE7\xF5es obrigat\xF3rias?",
-            options: ["Gastronomia & Culin\xE1ria Local + Museus", "Natureza, Deserto & Paisagens", "Hist\xF3ria, Monumentos & Cultura", "Compras, Mercados & Vida Noturna", "Parques & Aventura"],
-            placeholder: "Ex: Foco gastron\xF4mico, souks tradicionais e noite no deserto..."
-          }
-        ]
+        reason: "Ol\xE1! Sou a KedIA, sua Arquiteta de Itiner\xE1rios. Para calibrarmos perfeitamente a log\xEDstica e o estilo da sua viagem, responda aos pontos r\xE1pidos abaixo:",
+        suggestedQuestions: buildFallbackQuestions2()
       });
     }
+    const alreadyProvidedInfo = [
+      hasOrigin ? `- Cidade de Origem: "${originCity}"` : null,
+      startDate ? `- Data de In\xEDcio: "${startDate}"` : null,
+      durationDays ? `- Dura\xE7\xE3o Total: "${durationDays} dias"` : null
+    ].filter(Boolean).join("\n");
     const response = await generateContentWithRetry({
       model: "gemini-3.7-flash",
-      contents: `Prompt do Usu\xE1rio: "${prompt}"`,
+      contents: `Prompt do Usu\xE1rio: "${prompt}"
+${alreadyProvidedInfo ? `Informa\xE7\xF5es j\xE1 fornecidas no formul\xE1rio:
+${alreadyProvidedInfo}` : ""}`,
       config: {
         systemInstruction: `Voc\xEA \xE9 a KedIA, Consultora S\xEAnior de Viagens e Arquiteta de Itiner\xE1rios hiperpersonalizados.
 Sua miss\xE3o \xE9 criar roteiros eficientes, realistas, financeiramente precisos e atualizados.
@@ -3256,23 +3274,22 @@ Crit\xE9rios essenciais para um roteiro completo:
 4. Or\xE7amento e Estilo de Viagem (faixa de custo: Econ\xF4mico, Moderado ou Luxo; ritmo: Intenso, Equilibrado ou Relaxado).
 5. Interesses e Experi\xEAncias (gastronomia, cultura, natureza, compras, atra\xE7\xF5es obrigat\xF3rias e restri\xE7\xF5es).
 
-REGRAS R\xCDGIDAS DE AVALIA\xC7\xC3O:
+\u{1F6A8} REGRAS CR\xCDTICAS DE N\xC3O-REDUND\xC2NCIA:
+${hasOrigin ? `- A ORIGEM J\xC1 FOI INFORMADA ("${originCity}"). NUNCA fa\xE7a pergunta sobre cidade de origem/partida.` : ""}
+${hasDates ? `- AS DATAS/DURA\xC7\xC3O J\xC1 FORAM INFORMADAS (${startDate ? `In\xEDcio: ${startDate}, ` : ""}${durationDays ? `${durationDays} dias` : ""}). NUNCA fa\xE7a pergunta sobre dura\xE7\xE3o em dias ou m\xEAs de viagem.` : ""}
+- Pergunte APENAS sobre o que ainda n\xE3o foi especificado (geralmente: meio de transporte/deslocamento entre cidades, perfil do grupo, or\xE7amento/estilo e interesses/experi\xEAncias).
+- Retorne no m\xE1ximo 3 a 4 perguntas objetivas e relevantes.
 - Sempre retorne "isSpecific": false para abrir a Fase 1 de Diagn\xF3stico.
-- Estruture de 4 a 6 perguntas objetivas, gentis e inteligentes em portugu\xEAs do Brasil organizadas pelos blocos do Diagn\xF3stico do Viajante, incluindo SEMPRE:
-  * Origem de partida (cidade de sa\xEDda para voos e log\xEDstica).
-  * Datas de in\xEDcio e dura\xE7\xE3o exata em dias.
-  * Cidades e locomo\xE7\xE3o.
-  * Perfil e or\xE7amento.
 - Para cada pergunta, ofere\xE7a 4 a 5 op\xE7\xF5es pr\xE1ticas e inspiradoras de resposta r\xE1pida ("options"), al\xE9m de um campo "category" e um "placeholder" com exemplo claro.
 
 Retorne EXCLUSIVAMENTE um objeto JSON v\xE1lido correspondente a este schema:
 {
   "isSpecific": boolean,
-  "reason": string (resumo acolhedor da KedIA explicando os pontos que ser\xE3o personalizados com as respostas),
+  "reason": string (resumo acolhedor e inteligente da KedIA reconhecendo o destino e explicando os pontos que ser\xE3o refinados nas perguntas),
   "suggestedQuestions": [
     {
-      "id": string (ex: "origin_departure", "duration_dates", "destination_transport", "group_profile", "budget_pace", "interests_mustsee"),
-      "category": string (ex: "Origem e Ponto de Partida", "Datas e Dura\xE7\xE3o Exata", "Destinos e Deslocamento", "Perfil do Grupo", "Or\xE7amento e Estilo", "Interesses e Experi\xEAncias"),
+      "id": string (ex: "destination_transport", "group_profile", "budget_pace", "interests_mustsee"),
+      "category": string (ex: "Destinos e Deslocamento", "Perfil do Grupo", "Or\xE7amento e Estilo", "Interesses e Experi\xEAncias"),
       "question": string,
       "options": string[],
       "placeholder": string
@@ -3285,56 +3302,20 @@ Retorne EXCLUSIVAMENTE um objeto JSON v\xE1lido correspondente a este schema:
     }, userApiKey);
     const text2 = response.text || "{}";
     const result = JSON.parse(text2.trim());
+    if (result && Array.isArray(result.suggestedQuestions)) {
+      result.suggestedQuestions = result.suggestedQuestions.filter((q) => {
+        if (hasOrigin && (q.id === "origin_departure" || q.category?.toLowerCase().includes("origem"))) return false;
+        if (hasDates && (q.id === "duration_dates" || q.category?.toLowerCase().includes("dura\xE7\xE3o") || q.category?.toLowerCase().includes("datas"))) return false;
+        return true;
+      });
+    }
     res.json(result);
   } catch (err) {
     console.warn("Evaluation fallback triggered:", err?.message || err);
     res.json({
       isSpecific: false,
       reason: "Ol\xE1! Sou a KedIA. Vamos calibrar os detalhes do seu roteiro para ficar perfeito! Responda \xE0s op\xE7\xF5es r\xE1pidas abaixo:",
-      suggestedQuestions: [
-        {
-          id: "origin_departure",
-          category: "Origem e Ponto de Partida",
-          question: "De qual cidade voc\xEA ir\xE1 partir?",
-          options: ["S\xE3o Paulo (GRU)", "Rio de Janeiro (GIG)", "Belo Horizonte / Bras\xEDlia", "Lisboa / Porto", "Outra cidade"],
-          placeholder: "Ex: Saindo de S\xE3o Paulo..."
-        },
-        {
-          id: "duration_dates",
-          category: "Datas e Dura\xE7\xE3o Exata",
-          question: "Quantos dias exatos durar\xE1 a viagem e em qual data ou m\xEAs?",
-          options: ["15 dias", "10 dias", "7 dias", "5 dias", "20 dias ou mais"],
-          placeholder: "Ex: 15 dias a partir de 01 de Outubro..."
-        },
-        {
-          id: "destination_transport",
-          category: "Destinos e Deslocamento",
-          question: "Quais cidades voc\xEA deseja conhecer e como prefere se locomover?",
-          options: ["Cidades Hist\xF3ricas (Trem & Transfer)", "Metr\xF3poles (Metr\xF4 & A p\xE9)", "Costa e Praias (Carro Alugado)", "Regi\xE3o Serrana (Carro / Transfer)"],
-          placeholder: "Ex: Roteiro cultural de trem..."
-        },
-        {
-          id: "group_profile",
-          category: "Perfil do Grupo",
-          question: "Qual \xE9 o perfil de viajantes do grupo?",
-          options: ["Casal (Rom\xE2ntico)", "Fam\xEDlia com crian\xE7as", "Grupo de Amigos", "Solo / Individual", "Melhor Idade"],
-          placeholder: "Ex: Casal..."
-        },
-        {
-          id: "budget_pace",
-          category: "Or\xE7amento e Estilo de Viagem",
-          question: "Qual o seu or\xE7amento e ritmo desejado?",
-          options: ["Moderado (Equilibrado)", "Econ\xF4mico (Intenso)", "Luxo (Relaxado)"],
-          placeholder: "Ex: Moderado..."
-        },
-        {
-          id: "interests_mustsee",
-          category: "Interesses e Experi\xEAncias",
-          question: "Quais s\xE3o os pilares priorit\xE1rios da viagem?",
-          options: ["Gastronomia & Culin\xE1ria Local", "Hist\xF3ria, Museus & Monumentos", "Natureza & Paisagens", "Compras & Vida Noturna", "Aventura & Parques"],
-          placeholder: "Ex: Foco em gastronomia e cultura..."
-        }
-      ]
+      suggestedQuestions: buildFallbackQuestions()
     });
   }
 });
@@ -3591,6 +3572,7 @@ DIRETRIZES DA KEDIA PARA O ROTEIRO:
 
 Retorne EXCLUSIVAMENTE um objeto JSON v\xE1lido correspondente a este schema:
 {
+  "title": string (T\xEDtulo curto, criativo e memor\xE1vel para o roteiro abrangendo todas as cidades e experi\xEAncias principais. Ex: "Grand Tour pela It\xE1lia \u{1F1EE}\u{1F1F9}", "Lua de Mel na Toscana & Costa Amalfitana \u{1F942}", "Cultura e Tradi\xE7\xE3o no Jap\xE3o \u26E9\uFE0F", "Aventura Completa em Marrocos \u{1F42A}". M\xE1x 50 caracteres),
   "destinations": [
     {
       "id": string (ex: "dest-1"),
@@ -3802,10 +3784,12 @@ Retorne EXCLUSIVAMENTE um objeto JSON v\xE1lido correspondente a este schema:
       const userId = req.user?.id ?? null;
       const city = result?.destinations?.[0]?.city || "";
       const country = result?.destinations?.[0]?.country || "";
-      const generatedTitle = `${city}${country ? `, ${country}` : ""} (${totalDateRangeStr})`.trim();
+      const fallbackTitle = `${city}${country ? `, ${country}` : ""} (${totalDateRangeStr})`.trim();
+      const generatedTitle = result?.title && typeof result.title === "string" && result.title.trim() ? result.title.trim() : fallbackTitle;
+      result.title = generatedTitle;
       let summaryText = typeof result?.summary === "string" && result.summary.trim() ? result.summary.trim() : "";
       if (!summaryText) {
-        summaryText = `${city}${country ? `, ${country}` : ""}: ${requestedDays} dias de roteiro com partida de ${originCity} (${totalDateRangeStr})`;
+        summaryText = `${generatedTitle}: ${requestedDays} dias de roteiro com partida de ${originCity} (${totalDateRangeStr})`;
       }
       await db.insert(aiPromptLogs).values({
         userId,

@@ -128,7 +128,12 @@ export default function FirstAccessOnboarding({
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
         }),
-        body: JSON.stringify({ prompt: textToUse })
+        body: JSON.stringify({
+          prompt: textToUse,
+          originCity: originCity.trim() || undefined,
+          startDate: startDate.trim() || undefined,
+          durationDays: durationDays ? parseInt(durationDays, 10) : undefined
+        })
       });
 
       if (!response.ok) {
@@ -183,7 +188,10 @@ export default function FirstAccessOnboarding({
       const city = payload?.destinations?.[0]?.city || "Nova Viagem";
       const country = payload?.destinations?.[0]?.country || "";
       const dates = payload?.destinations?.[0]?.dates || "";
-      const title = `Viagem: ${city}${country ? `, ${country}` : ""} ${dates ? `(${dates})` : ""}`;
+      const fallbackTitle = `Viagem: ${city}${country ? `, ${country}` : ""} ${dates ? `(${dates})` : ""}`.trim();
+      const title = (payload?.title && typeof payload.title === "string" && payload.title.trim())
+        ? payload.title.trim()
+        : fallbackTitle;
 
       await onImportGeneratedItinerary(title, payload);
     } catch (err: any) {

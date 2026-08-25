@@ -200,7 +200,12 @@ export default function AIPlannerWidget({
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
         }),
-        body: JSON.stringify({ prompt })
+        body: JSON.stringify({
+          prompt,
+          originCity: originCity.trim() || undefined,
+          startDate: startDate.trim() || undefined,
+          durationDays: durationDays ? parseInt(durationDays, 10) : undefined
+        })
       });
 
       if (!response.ok) {
@@ -275,11 +280,14 @@ export default function AIPlannerWidget({
 
       const payload = await response.json();
       
-      // Compute a clean title for the new itinerary based on generated context
+      // Compute a clean, creative title for the new itinerary based on generated context
       const city = payload?.destinations?.[0]?.city || "Novo Destino";
       const country = payload?.destinations?.[0]?.country || "";
       const dates = payload?.destinations?.[0]?.dates || "Data a Definir";
-      const title = `Roteiro IA: ${city}${country ? `, ${country}` : ""} (${dates})`;
+      const fallbackTitle = `Roteiro IA: ${city}${country ? `, ${country}` : ""} (${dates})`;
+      const title = (payload?.title && typeof payload.title === "string" && payload.title.trim())
+        ? payload.title.trim()
+        : fallbackTitle;
 
       // Import directly into current user state
       onImportGeneratedItinerary(title, payload);
@@ -589,7 +597,12 @@ export default function AIPlannerWidget({
                                         "Content-Type": "application/json",
                                         "Authorization": `Bearer ${token}`
                                       }),
-                                      body: JSON.stringify({ prompt: textToUse })
+                                      body: JSON.stringify({
+                                        prompt: textToUse,
+                                        originCity: originCity.trim() || undefined,
+                                        startDate: startDate.trim() || undefined,
+                                        durationDays: durationDays ? parseInt(durationDays, 10) : undefined
+                                      })
                                     });
                                     if (!response.ok) {
                                       throw new Error("Não foi possível carregar o diagnóstico.");
@@ -655,6 +668,35 @@ export default function AIPlannerWidget({
                       exit="exit"
                       transition={stepTransition}
                     >
+                      {/* Confirmed initial parameters banner */}
+                      {(originCity || startDate || durationDays) && (
+                        <motion.div
+                          className="bg-emerald-50 border border-emerald-200/80 p-3 rounded-2xl flex flex-wrap items-center gap-2 text-xs font-bold text-emerald-900"
+                          initial={{ opacity: 0, scale: 0.97 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: 0.05, duration: 0.3 }}
+                        >
+                          <span className="text-emerald-700 font-black flex items-center gap-1 text-[11px] uppercase tracking-wider">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Confirmados:
+                          </span>
+                          {originCity && (
+                            <span className="bg-white border border-emerald-200 px-2.5 py-1 rounded-xl text-emerald-800 text-[11px] shadow-2xs">
+                              🛫 Origem: <strong>{originCity}</strong>
+                            </span>
+                          )}
+                          {startDate && (
+                            <span className="bg-white border border-emerald-200 px-2.5 py-1 rounded-xl text-emerald-800 text-[11px] shadow-2xs">
+                              📅 Início: <strong>{startDate}</strong>
+                            </span>
+                          )}
+                          {durationDays && (
+                            <span className="bg-white border border-emerald-200 px-2.5 py-1 rounded-xl text-emerald-800 text-[11px] shadow-2xs">
+                              ⏳ Duração: <strong>{durationDays} dias</strong>
+                            </span>
+                          )}
+                        </motion.div>
+                      )}
+
                       <motion.div 
                         className="bg-amber-50 border border-amber-200/80 p-4 rounded-2xl space-y-1"
                         initial={{ opacity: 0, scale: 0.97 }}
