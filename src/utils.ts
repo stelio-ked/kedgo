@@ -537,6 +537,61 @@ export function parseRangeToDates(rangeStr: string, year = 2026): { startDate: s
 }
 
 /**
+ * Calculates the overall trip date range across all destinations,
+ * finding the earliest start date and the latest end date,
+ * and returning the destinations sorted chronologically.
+ */
+export function getOverallTripDateRange(destinations: any[]): {
+  startDate: string;
+  endDate: string;
+  formattedRange: string;
+  sortedDestinations: any[];
+} {
+  if (!destinations || destinations.length === 0) {
+    return { startDate: "", endDate: "", formattedRange: "", sortedDestinations: [] };
+  }
+
+  const getDatesForDest = (d: any) => {
+    let start = d.startDate || d.start_date || (d.checkInDate ? d.checkInDate.split('T')[0] : "");
+    let end = d.endDate || d.end_date || "";
+
+    if (!start || !end) {
+      const parsed = parseRangeToDates(d.dates || "");
+      start = start || parsed.startDate;
+      end = end || parsed.endDate;
+    }
+    return { start, end };
+  };
+
+  const sortedDestinations = [...destinations].sort((a, b) => {
+    const aDates = getDatesForDest(a);
+    const bDates = getDatesForDest(b);
+    return aDates.start.localeCompare(bDates.start);
+  });
+
+  const validStarts = destinations.map(d => getDatesForDest(d).start).filter(Boolean).sort();
+  const validEnds = destinations.map(d => getDatesForDest(d).end).filter(Boolean).sort();
+
+  const earliestStart = validStarts[0] || "";
+  const latestEnd = validEnds[validEnds.length - 1] || earliestStart;
+
+  let formattedRange = "";
+  if (earliestStart && latestEnd) {
+    formattedRange = formatDatesRange(earliestStart, latestEnd);
+  }
+  if (!formattedRange && destinations[0]?.dates) {
+    formattedRange = destinations[0].dates;
+  }
+
+  return {
+    startDate: earliestStart,
+    endDate: latestEnd,
+    formattedRange,
+    sortedDestinations
+  };
+}
+
+/**
  * Verifies if the current user has permission to delete a specific entity.
  * Rules:
  *  - Role "Administrador" can delete any entity.

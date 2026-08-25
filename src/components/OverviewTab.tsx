@@ -31,7 +31,7 @@ import {
   ZoomOut
 } from "lucide-react";
 import { Destination, FlightInfo, Traveler, CostItem, FlightPassenger } from "../types";
-import { parseRangeToDates, formatDatesRange, canDeleteEntity } from "../utils";
+import { parseRangeToDates, formatDatesRange, getOverallTripDateRange, canDeleteEntity } from "../utils";
 import { motion, AnimatePresence } from "motion/react";
 import AIPlannerWidget from "./AIPlannerWidget";
 import MapsSelectorModal from "./MapsSelectorModal";
@@ -783,17 +783,21 @@ export default function OverviewTab({
             Painel Central da Viagem
           </span>
           <h2 className="text-3xl font-extrabold tracking-tight">{title || "Sua Viagem Personalizada"}</h2>
-          {destinations && destinations.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-amber-200/90 pt-0.5">
-              <span>📍 {destinations.map((d) => d.city).filter(Boolean).join(" • ")}</span>
-              {destinations[0]?.dates && (
-                <>
-                  <span className="text-white/40">•</span>
-                  <span>🗓️ {destinations[0].dates}</span>
-                </>
-              )}
-            </div>
-          )}
+          {destinations && destinations.length > 0 && (() => {
+            const tripDates = getOverallTripDateRange(destinations);
+            const citiesList = tripDates.sortedDestinations.map((d) => d.city).filter(Boolean).join(" • ");
+            return (
+              <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-amber-200/90 pt-0.5">
+                {citiesList && <span>📍 {citiesList}</span>}
+                {tripDates.formattedRange && (
+                  <>
+                    <span className="text-white/40">•</span>
+                    <span>🗓️ {tripDates.formattedRange}</span>
+                  </>
+                )}
+              </div>
+            );
+          })()}
           <p className="text-sm text-slate-200 leading-relaxed">
             Aqui você encontra todos os detalhes do roteiro, localizações de estadias, planejamento financeiro unificado e os trajetos calculados para o seu grupo de {travelers.length} {travelers.length === 1 ? 'viajante' : 'viajantes'}.
           </p>
