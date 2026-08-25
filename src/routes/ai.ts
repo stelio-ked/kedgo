@@ -24,28 +24,35 @@ router.post("/evaluate-prompt", authMiddleware, geminiQuotaMiddleware, async (re
     if (!userApiKey) {
       return res.json({
         isSpecific: false,
-        reason: "Olá! Sou a KedIA, sua Arquiteta de Itinerários. Para que seu roteiro fique hiperpersonalizado, selecione ou responda os pontos essenciais abaixo:",
+        reason: "Olá! Sou a KedIA, sua Arquiteta de Itinerários. Para calibrarmos perfeitamente a logística, origem, datas e ritmo da sua viagem, responda aos pontos rápidos abaixo:",
         suggestedQuestions: [
           {
-            id: "destination_transport",
-            category: "Destino e Logística Básica",
-            question: "Qual o destino e como você planeja se locomover (carro, transporte público, a pé/Uber)?",
-            options: ["Paris & Roma (Trem & Metrô)", "Tóquio & Kyoto (Trens JR / Metrô)", "Nova York (Metrô & A pé)", "Orlando & Miami (Carro Alugado)", "Gramado & Canela (A pé & Uber)"],
-            placeholder: "Ex: Roma e Florença de trem de alta velocidade..."
+            id: "origin_departure",
+            category: "Origem e Ponto de Partida",
+            question: "De qual cidade você irá partir (origem) e já tem aeroporto ou meio de preferência?",
+            options: ["São Paulo (GRU / CGH)", "Rio de Janeiro (GIG / SDU)", "Belo Horizonte / Brasília", "Lisboa / Porto (Portugal)", "Outra cidade / Sem voo"],
+            placeholder: "Ex: Saindo de São Paulo (Guarulhos)..."
           },
           {
             id: "duration_dates",
-            category: "Destino e Logística Básica",
-            question: "Quantos dias exatos durará a viagem e em qual época/mês do ano?",
-            options: ["5 dias (Próximas semanas)", "7 dias (Férias de Julho)", "10 dias (Primavera/Outono)", "14 dias ou mais"],
-            placeholder: "Ex: 10 dias em outubro de 2026..."
+            category: "Datas e Duração Exata",
+            question: "Quantos dias exatos durará a viagem e qual a data ou mês de partida?",
+            options: ["15 dias (Roteiro Completo)", "10 dias", "7 dias (1 Semana)", "5 dias", "20 dias ou mais"],
+            placeholder: "Ex: 15 dias a partir de 01 de Outubro de 2026..."
+          },
+          {
+            id: "destination_transport",
+            category: "Destinos e Deslocamento",
+            question: "Quais cidades/regiões você deseja conhecer e como prefere se deslocar?",
+            options: ["Marrakech e Cidades Históricas (Transfer & Trem)", "Paris & Roma (Trem de Alta Velocidade)", "Tóquio & Kyoto (Trens JR & Metrô)", "Orlando & Miami (Carro Alugado)", "Costa e Praias (Carro / Barco)"],
+            placeholder: "Ex: Marrakech, Chefchaouen e deserto com transfer privativo..."
           },
           {
             id: "group_profile",
             category: "Perfil do Grupo",
             question: "Quantas pessoas irão viajar e qual o perfil do grupo?",
-            options: ["Casal (Romântico)", "Família com crianças", "Grupo de Amigos", "Solo / Viajante Individual", "Família com Idosos"],
-            placeholder: "Ex: Casal com 1 criança de 7 anos..."
+            options: ["Casal (Romântico)", "Família com crianças", "Grupo de Amigos", "Solo / Viajante Individual", "Melhor Idade"],
+            placeholder: "Ex: Casal em lua de mel..."
           },
           {
             id: "budget_pace",
@@ -58,8 +65,8 @@ router.post("/evaluate-prompt", authMiddleware, geminiQuotaMiddleware, async (re
             id: "interests_mustsee",
             category: "Interesses e Experiências",
             question: "Quais são os pilares prioritários da viagem e há atrações obrigatórias?",
-            options: ["Gastronomia & Vinhos + Museus", "Natureza, Praias & Paisagens", "História, Monumentos & Cultura", "Compras, Vida Noturna & Shows", "Parques Temáticos & Diversão"],
-            placeholder: "Ex: Foco gastronômico, não abro mão do Museu do Louvre..."
+            options: ["Gastronomia & Culinária Local + Museus", "Natureza, Deserto & Paisagens", "História, Monumentos & Cultura", "Compras, Mercados & Vida Noturna", "Parques & Aventura"],
+            placeholder: "Ex: Foco gastronômico, souks tradicionais e noite no deserto..."
           }
         ]
       });
@@ -71,18 +78,23 @@ router.post("/evaluate-prompt", authMiddleware, geminiQuotaMiddleware, async (re
       config: {
         systemInstruction: `Você é a KedIA, Consultora Sênior de Viagens e Arquiteta de Itinerários hiperpersonalizados.
 Sua missão é criar roteiros eficientes, realistas, financeiramente precisos e atualizados.
-Antes de gerar o roteiro, avalie rigorosamente o prompt inicial do usuário de acordo com o [FASE 1: DIAGNÓSTICO DO VIAJANTE].
+Antes de gerar o roteiro, avalie o prompt inicial do usuário de acordo com o [FASE 1: DIAGNÓSTICO DO VIAJANTE].
 
 Critérios essenciais para um roteiro completo:
-1. Destino e Logística Básica (cidades específicas, duração em dias, meio de transporte planejado).
-2. Perfil do Grupo (casal, família, amigos, solo, presença de crianças/idosos).
-3. Orçamento e Estilo de Viagem (faixa de custo: Econômico, Moderado ou Luxo; ritmo: Intenso, Equilibrado ou Relaxado).
-4. Interesses e Experiências (gastronomia, cultura, natureza, compras, atrações obrigatórias e restrições).
+1. Origem de Partida e Transporte (cidade de onde o viajante vai sair, aeroporto, como vai se locomover).
+2. Destinos e Duração Exata (duração em dias, datas/mês de partida, cidades e bases de hospedagem).
+3. Perfil do Grupo (casal, família, amigos, solo, presença de crianças/idosos).
+4. Orçamento e Estilo de Viagem (faixa de custo: Econômico, Moderado ou Luxo; ritmo: Intenso, Equilibrado ou Relaxado).
+5. Interesses e Experiências (gastronomia, cultura, natureza, compras, atrações obrigatórias e restrições).
 
 REGRAS RÍGIDAS DE AVALIAÇÃO:
-- Se qualquer um dos detalhes acima NÃO estiver 100% explícito no prompt inicial, MARQUE "isSpecific" COMO false!
-- Quando "isSpecific" for false, estruture de 3 a 5 perguntas objetivas, gentis e inteligentes em português do Brasil organizadas pelos blocos do Diagnóstico do Viajante.
-- Para cada pergunta, ofereça 4 opções práticas e inspiradoras de resposta rápida ("options"), além de um campo "category" e um "placeholder" com exemplo claro.
+- Sempre retorne "isSpecific": false para abrir a Fase 1 de Diagnóstico.
+- Estruture de 4 a 6 perguntas objetivas, gentis e inteligentes em português do Brasil organizadas pelos blocos do Diagnóstico do Viajante, incluindo SEMPRE:
+  * Origem de partida (cidade de saída para voos e logística).
+  * Datas de início e duração exata em dias.
+  * Cidades e locomoção.
+  * Perfil e orçamento.
+- Para cada pergunta, ofereça 4 a 5 opções práticas e inspiradoras de resposta rápida ("options"), além de um campo "category" e um "placeholder" com exemplo claro.
 
 Retorne EXCLUSIVAMENTE um objeto JSON válido correspondente a este schema:
 {
@@ -90,8 +102,8 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido correspondente a este schema:
   "reason": string (resumo acolhedor da KedIA explicando os pontos que serão personalizados com as respostas),
   "suggestedQuestions": [
     {
-      "id": string (ex: "destination_transport", "duration_dates", "group_profile", "budget_pace", "interests_mustsee"),
-      "category": string (ex: "Destino e Logística Básica", "Perfil do Grupo", "Orçamento e Estilo", "Interesses e Experiências"),
+      "id": string (ex: "origin_departure", "duration_dates", "destination_transport", "group_profile", "budget_pace", "interests_mustsee"),
+      "category": string (ex: "Origem e Ponto de Partida", "Datas e Duração Exata", "Destinos e Deslocamento", "Perfil do Grupo", "Orçamento e Estilo", "Interesses e Experiências"),
       "question": string,
       "options": string[],
       "placeholder": string
@@ -114,18 +126,25 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido correspondente a este schema:
       reason: "Olá! Sou a KedIA. Vamos calibrar os detalhes do seu roteiro para ficar perfeito! Responda às opções rápidas abaixo:",
       suggestedQuestions: [
         {
-          id: "destination_transport",
-          category: "Destino e Logística Básica",
-          question: "Para quais cidades você deseja ir e como prefere se locomover?",
-          options: ["Paris & Roma (Trem & Metrô)", "Tóquio & Kyoto (Trens JR / Metrô)", "Nova York (Metrô & A pé)", "Orlando & Miami (Carro Alugado)", "Gramado & Canela (A pé & Uber)"],
-          placeholder: "Ex: Roma e Florença de trem..."
+          id: "origin_departure",
+          category: "Origem e Ponto de Partida",
+          question: "De qual cidade você irá partir?",
+          options: ["São Paulo (GRU)", "Rio de Janeiro (GIG)", "Belo Horizonte / Brasília", "Lisboa / Porto", "Outra cidade"],
+          placeholder: "Ex: Saindo de São Paulo..."
         },
         {
           id: "duration_dates",
-          category: "Destino e Logística Básica",
-          question: "Quantos dias de viagem e em que período/mês?",
-          options: ["5 dias (Próximas semanas)", "7 dias (Férias de Julho)", "10 dias (Outubro)", "14 dias ou mais"],
-          placeholder: "Ex: 7 dias em setembro de 2026..."
+          category: "Datas e Duração Exata",
+          question: "Quantos dias exatos durará a viagem e em qual data ou mês?",
+          options: ["15 dias", "10 dias", "7 dias", "5 dias", "20 dias ou mais"],
+          placeholder: "Ex: 15 dias a partir de 01 de Outubro..."
+        },
+        {
+          id: "destination_transport",
+          category: "Destinos e Deslocamento",
+          question: "Quais cidades você deseja conhecer e como prefere se locomover?",
+          options: ["Cidades Históricas (Trem & Transfer)", "Metrópoles (Metrô & A pé)", "Costa e Praias (Carro Alugado)", "Região Serrana (Carro / Transfer)"],
+          placeholder: "Ex: Roteiro cultural de trem..."
         },
         {
           id: "group_profile",
@@ -138,15 +157,15 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido correspondente a este schema:
           id: "budget_pace",
           category: "Orçamento e Estilo de Viagem",
           question: "Qual o seu orçamento e ritmo desejado?",
-          options: ["Moderado / Confortável (Equilibrado)", "Econômico (Intenso - Ver tudo)", "Luxo & Exclusivo (Relaxado)", "Moderado (Relaxado)"],
-          placeholder: "Ex: Moderado, ritmo tranquilo..."
+          options: ["Moderado (Equilibrado)", "Econômico (Intenso)", "Luxo (Relaxado)"],
+          placeholder: "Ex: Moderado..."
         },
         {
           id: "interests_mustsee",
           category: "Interesses e Experiências",
           question: "Quais são os pilares prioritários da viagem?",
-          options: ["Gastronomia & Vinhos", "História, Museus & Monumentos", "Natureza, Praias & Trilhas", "Compras & Vida Noturna", "Parques & Lazer"],
-          placeholder: "Ex: Bons restaurantes e museus..."
+          options: ["Gastronomia & Culinária Local", "História, Museus & Monumentos", "Natureza & Paisagens", "Compras & Vida Noturna", "Aventura & Parques"],
+          placeholder: "Ex: Foco em gastronomia e cultura..."
         }
       ]
     });
@@ -254,7 +273,7 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido correspondente a este schema:
 
 router.post("/generate-itinerary", authMiddleware, geminiQuotaMiddleware, async (req: AuthRequest, res) => {
   try {
-    const { prompt, answers } = req.body;
+    const { prompt, answers, originCity: rawOriginCity, startDate: rawStartDate, durationDays: rawDurationDays } = req.body;
     if (!prompt || typeof prompt !== "string" || !prompt.trim()) {
       return res.status(400).json({ error: "O prompt não pode ser vazio." });
     }
@@ -271,46 +290,118 @@ router.post("/generate-itinerary", authMiddleware, geminiQuotaMiddleware, async 
         Object.entries(answers).map(([key, val]) => `- ${key}: ${val}`).join("\n");
     }
 
-    // Extract requested days from prompt or answers
+    // 1. Extract requested days from direct field, prompt or answers
     let requestedDays = 7;
-    const promptMatch = prompt.match(/(\d+)\s*dias?/i);
-    if (promptMatch) {
-      requestedDays = parseInt(promptMatch[1], 10);
-    }
-    if (answers) {
-      for (const val of Object.values(answers)) {
-        if (typeof val === "string") {
-          const match = val.match(/(\d+)\s*dias?/i);
-          if (match) {
-            requestedDays = parseInt(match[1], 10);
+    if (rawDurationDays && !isNaN(Number(rawDurationDays)) && Number(rawDurationDays) > 0) {
+      requestedDays = Math.min(30, Math.max(1, Number(rawDurationDays)));
+    } else {
+      const promptMatch = prompt.match(/(\d+)\s*dias?/i);
+      if (promptMatch) {
+        requestedDays = parseInt(promptMatch[1], 10);
+      }
+      if (answers) {
+        for (const val of Object.values(answers)) {
+          if (typeof val === "string") {
+            const match = val.match(/(\d+)\s*dias?/i);
+            if (match) {
+              requestedDays = parseInt(match[1], 10);
+            }
           }
         }
       }
     }
 
+    // 2. Extract origin city
+    let originCity = (rawOriginCity || "").trim();
+    if (!originCity && answers) {
+      if (typeof answers.origin_departure === "string" && answers.origin_departure.trim()) {
+        originCity = answers.origin_departure.trim();
+      }
+    }
+    if (!originCity) {
+      const originMatch = prompt.match(/(?:saindo de|partindo de|origem[:\s]+)([a-zA-ZÀ-ÖØ-öø-ÿ\s\(\)]+?)(?:,|\.|\s+para|\s+com|\s+em|$)/i);
+      if (originMatch) {
+        originCity = originMatch[1].trim();
+      }
+    }
+    if (!originCity) {
+      originCity = "São Paulo (GRU)";
+    }
+
+    // 3. Extract and compute start date & end date
+    let startDateObj: Date;
+    if (rawStartDate && typeof rawStartDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(rawStartDate)) {
+      const [y, m, d] = rawStartDate.split("-").map(Number);
+      startDateObj = new Date(y, m - 1, d, 12, 0, 0);
+    } else {
+      // Try finding dates or months in prompt or answers
+      const combinedText = `${prompt} ${Object.values(answers || {}).join(" ")}`.toLowerCase();
+      const monthsMap: { [k: string]: number } = {
+        "janeiro": 0, "jan": 0, "fevereiro": 1, "fev": 1, "março": 2, "marco": 2, "mar": 2,
+        "abril": 3, "abr": 3, "maio": 4, "mai": 4, "junho": 5, "jun": 5,
+        "julho": 6, "jul": 6, "agosto": 7, "ago": 7, "setembro": 8, "set": 8,
+        "outubro": 9, "out": 9, "novembro": 10, "nov": 10, "dezembro": 11, "dez": 11
+      };
+      
+      let foundMonth = 9; // default to October (outubro) 2026 as reference
+      let foundDay = 1;
+      let foundYear = 2026;
+
+      const dateRegex = /(\d{1,2})[\s\/\.de]+([a-zçáõ]+)(?:[\s\/\.de]+(\d{4}))?/i;
+      const matchDate = combinedText.match(dateRegex);
+      if (matchDate) {
+        foundDay = parseInt(matchDate[1], 10);
+        const mKey = matchDate[2].substring(0, 3);
+        if (monthsMap[mKey] !== undefined) foundMonth = monthsMap[mKey];
+        if (matchDate[3]) foundYear = parseInt(matchDate[3], 10);
+      } else {
+        for (const [mName, mIdx] of Object.entries(monthsMap)) {
+          if (combinedText.includes(mName)) {
+            foundMonth = mIdx;
+            break;
+          }
+        }
+      }
+      startDateObj = new Date(foundYear, foundMonth, foundDay, 12, 0, 0);
+    }
+
+    const endDateObj = new Date(startDateObj.getTime() + (requestedDays - 1) * 24 * 60 * 60 * 1000);
+    const startDateISO = `${startDateObj.getFullYear()}-${String(startDateObj.getMonth() + 1).padStart(2, "0")}-${String(startDateObj.getDate()).padStart(2, "0")}`;
+    const endDateISO = `${endDateObj.getFullYear()}-${String(endDateObj.getMonth() + 1).padStart(2, "0")}-${String(endDateObj.getDate()).padStart(2, "0")}`;
+
+    const shortMonths = ["jan.", "fev.", "mar.", "abr.", "mai.", "jun.", "jul.", "ago.", "set.", "out.", "nov.", "dez."];
+    const fullMonths = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+    const weekdays = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+
+    const startFriendly = `${String(startDateObj.getDate()).padStart(2, "0")} ${shortMonths[startDateObj.getMonth()]}`;
+    const endFriendly = `${String(endDateObj.getDate()).padStart(2, "0")} ${shortMonths[endDateObj.getMonth()]}`;
+    const totalDateRangeStr = `${startFriendly} - ${endFriendly}`;
+
     const response = await generateContentWithRetry({
       model: "gemini-3.7-flash",
-      contents: `Prompt original: "${prompt}"${parsedAnswersStr}`,
+      contents: `Prompt original: "${prompt}"${parsedAnswersStr}\nOrigem selecionada: ${originCity}\nData de Início: ${startDateISO}\nDuração: ${requestedDays} dias (até ${endDateISO})`,
       config: {
         systemInstruction: `Você é a KedIA, Consultora Sênior de Viagens e Arquiteta de Itinerários hiperpersonalizados da plataforma KedGo.
 Sua missão é executar a [FASE 2: ESTRUTURA DO ROTEIRO FINAL] com máxima excelência, logística fluida, realismo geográfico e financeiro rigoroso (SEM ALUCINAÇÕES DE PREÇO OU DATAS).
 
-🚨 REGRA ABSOLUTA E INEGOCIÁVEL DE DURAÇÃO (OBRIGATÓRIO):
-- O usuário especificou EXATAMENTE ${requestedDays} DIAS de viagem!
-- O total de dias gerados somados em todos os destinos (no array "days" de cada destino, totalizando entre todos os destinos) DEVE SER EXATAMENTE ${requestedDays} DIAS (Do Dia 1 até o Dia ${requestedDays}, numerados sequencialmente de 1 a ${requestedDays}).
-- NUNCA retorne menos dias do que o solicitado (ex: se pediu 10 dias, retorne rigorosamente 10 dias de programação completa).
-- Se houver múltiplas cidades (ex: Dubrovnik, Split, Zagreb), divida os ${requestedDays} dias proporcionalmente entre elas (ex: 3 dias Dubrovnik, 3 dias Split, 4 dias Zagreb).
+🚨 REGRAS ABSOLUTAS E INEGOCIÁVEIS DE ORIGEM, DATAS E DURAÇÃO (OBRIGATÓRIO):
+- CIDADE DE ORIGEM DE PARTIDA: "${originCity}". O primeiro voo em "flights" (voo de ida) DEVE ter "departureCity": "${originCity}".
+- DATA DE INÍCIO DA VIAGEM: ${startDateISO} (${startFriendly}).
+- DATA DE TÉRMINO DA VIAGEM: ${endDateISO} (${endFriendly}).
+- DURAÇÃO TOTAL EXATA: EXATAMENTE ${requestedDays} DIAS.
+- O total de dias somados no array "days" de todos os destinos (entre todas as cidades) DEVE SER EXATAMENTE ${requestedDays} DIAS (Do Dia 1 até o Dia ${requestedDays}, numerados sequencialmente sem saltar).
+- Se houver múltiplos destinos/cidades (ex: Marrakech, Fes, Casablanca), distribua os ${requestedDays} dias harmonicamente entre eles (ex: 5 dias Marrakech, 4 dias Fes, 3 dias Deserto de Merzouga, 3 dias Casablanca = 15 dias).
+- NUNCA retorne menos dias do que o solicitado (${requestedDays} dias).
 
 DIRETRIZES DA KEDIA PARA O ROTEIRO:
 
 1. DURAÇÃO EXATA E QUANTIDADE DE DIAS:
-   - Identifique a quantidade exata de dias informada no prompt ou no diagnóstico (ex: "7 dias", "10 dias").
-   - O array de dias "days" DEVE conter exatamente essa quantidade de dias somados entre todos os destinos (do Dia 1 ao último dia, sem saltar números).
-   - Se o usuário especificou época/datas (ex: "julho de 2026"), calibre as datas em startDate e endDate nos destinos.
+   - O array de dias "days" DEVE conter rigorosamente ${requestedDays} dias no total (do Dia 1 ao Dia ${requestedDays}).
+   - Cada dia deve ter "dateStr" no formato "Dia da semana, DD de Mês" correspondendo ao dia consecutivo real a partir de ${startDateISO}.
 
 2. LOGÍSTICA DE BASES E AGRUPAMENTO GEOGRÁFICO:
    - Organize as atividades de cada dia por proximidade geográfica para eliminar ziguezagues e otimizar deslocamentos.
-   - Para viagens de 7+ dias com múltiplos destinos, divida harmonicamente entre as cidades no array "destinations".
+   - Para viagens de múltiplos destinos, crie uma entrada no array "destinations" para cada cidade/base de hospedagem com datas sequenciais coerentes.
    - Cada dia deve ter divisão lógica das atividades entre MANHÃ (manhã/início do dia), TARDE (almoço e passeios da tarde) e NOITE (jantar e atrações noturnas).
 
 3. CLASSIFICAÇÃO OBRIGATÓRIA E INTELIGENTE DE CADA ATIVIDADE (CAMPO "type"):
@@ -323,28 +414,16 @@ DIRETRIZES DA KEDIA PARA O ROTEIRO:
 
 4. GASTRONOMIA REAL E RECOMENDAÇÕES PRÓXIMAS:
    - Para cada dia, inclua pelo menos 1 a 2 opções gastronômicas reais próximas às atrações visitadas (sempre com type: "dinner").
-   - No campo "notes" da atividade de almoço/jantar, detalhe:
-     * Nome do restaurante / bistrô
-     * Tipo de culinária
-     * Faixa de preço (ex: $$ Econômico, $$$ Moderado ou $$$$ Alta Gastronomia)
-     * Se exige reserva antecipada.
+   - No campo "notes" da atividade de almoço/jantar, detalhe nome do restaurante, tipo de culinária e faixa de preço.
 
 5. DICAS DE INSIDER (1 a 3 POR DIA):
-   - No campo "notes" das atividades principais de cada dia, inclua dicas valiosas de insider:
-     * Melhor horário para fotos com luz ideal e sem multidões
-     * Como furar ou evitar filas (ex: compra online de ingresso, entrada prioritária)
-     * Dicas de vestimenta (ex: ombros cobertos em templos/igrejas) ou passes de transporte ideais.
+   - No campo "notes" das atividades principais, inclua dicas valiosas de insider (melhor horário para fotos, como evitar filas, vestimenta, ingressos antecipados).
 
 6. LOGÍSTICA, CHECKLIST, APPS E ALERTAS (no array "generalTips"):
-   - Inclua dicas estruturadas categorizadas:
-     * "Ingressos Antecipados": lista de atrações que exigem compra prévia obrigatória.
-     * "Aplicativos Recomendados": apps locais essenciais (transporte, mapas offline, delivery, câmbio).
-     * "Segurança & Golpes Comuns": pegadinhas turísticas comuns no destino e como evitá-las.
-     * "Clima & Etiqueta": dicas de vestimenta, moeda, gorjetas e feriados que impactam o roteiro.
+   - Inclua dicas categorizadas: "Ingressos Antecipados", "Aplicativos Recomendados", "Segurança & Golpes Comuns", "Clima & Etiqueta".
 
 7. ESTIMATIVAS FINANCEIRAS E PREÇOS REAIS:
-   - Valores honestos no array "costs" de acordo com o padrão escolhido (Econômico, Moderado ou Luxo).
-   - Não infle preços arbitrariamente.
+   - Valores honestos no array "costs" de acordo com o padrão escolhido.
 
 Retorne EXCLUSIVAMENTE um objeto JSON válido correspondente a este schema:
 {
@@ -354,9 +433,9 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido correspondente a este schema:
       "city": string,
       "state": string,
       "country": string,
-      "dates": string (ex: "01 out. - 07 out."),
-      "startDate": string (formato YYYY-MM-DD, ex: 2026-10-01),
-      "endDate": string (formato YYYY-MM-DD, ex: 2026-10-07),
+      "dates": string (ex: "${totalDateRangeStr}"),
+      "startDate": string (formato YYYY-MM-DD, ex: "${startDateISO}"),
+      "endDate": string (formato YYYY-MM-DD, ex: "${endDateISO}"),
       "hotelName": string,
       "hotelAddress": string,
       "checkInTime": string (ex: "15:00"),
@@ -365,19 +444,19 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido correspondente a este schema:
       "days": [
         {
           "id": string (ex: "day-1"),
-          "dayNumber": number (numeração contínua de 1 até o total de dias),
+          "dayNumber": number (numeração contínua de 1 até ${requestedDays}),
           "dateStr": string (ex: "Quinta, 01 de Outubro"),
-          "title": string (ex: "Manhã Histórica + Tarde no Rio Sena e Gastronomia"),
+          "title": string (ex: "Chegada + Manhã Histórica + Gastronomia Típica"),
           "activities": [
             {
               "id": string (ex: "act-1"),
               "time": string (formato 24h, ex: "09:00"),
-              "type": "tour" | "dinner" | "flight" | "hotel" | "other" (CLASSIFICAÇÃO OBRIGATÓRIA: use "tour" para atrações/museus/passeios/pontos turísticos, "dinner" para restaurantes/cafés/refeições, "flight" para voos/trens/transfers, "hotel" para check-in/hospedagem, "other" para tempo livre),
+              "type": "tour" | "dinner" | "flight" | "hotel" | "other",
               "location": string,
               "duration": string (ex: "2h"),
               "cost": string (ex: "Gratuito" ou "€ 17 / R$ 95"),
-              "mapsQuery": string (termo para busca exata no Google Maps),
-              "notes": string (detalhes da atividade + Dica de Insider ou Recomendação Gastronômica com tipo de culinária e faixa de preço)
+              "mapsQuery": string,
+              "notes": string
             }
           ]
         }
@@ -386,7 +465,7 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido correspondente a este schema:
   ],
   "costs": [
     {
-      "id": string (ex: "cost-1"),
+      "id": string,
       "category": "hotel" | "flight" | "car" | "activity" | "other",
       "description": string,
       "totalCostBRL": number,
@@ -395,7 +474,7 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido correspondente a este schema:
   ],
   "flights": [
     {
-      "id": string (ex: "flight-1"),
+      "id": string,
       "airline": string,
       "flightCode": string,
       "departureCity": string,
@@ -411,13 +490,13 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido correspondente a este schema:
   ],
   "generalTips": [
     {
-      "id": string (ex: "tip-1"),
-      "category": string (ex: "Ingressos Antecipados", "Aplicativos Recomendados", "Segurança & Golpes Comuns", "Clima & Etiqueta"),
+      "id": string,
+      "category": string,
       "title": string,
       "content": string
     }
   ],
-  "summary": string (Resumo inteligente, claro e inspirador em 1 frase descrevendo o roteiro: Destino, quantidade de dias, perfil do viajante e principais destaques/estilo. Exemplo: "Dubrovnik e Costa da Croácia: 5 dias com praias cristalinas, muralhas medievais e gastronomia mediterrânea")
+  "summary": string (Resumo inspirador em 1 frase descrevendo o roteiro completo: Destino, total de dias, perfil e destaques)
 }`,
         responseMimeType: "application/json",
         temperature: 0.4,
@@ -427,27 +506,128 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido correspondente a este schema:
     const text = response.text || "{}";
     const result = JSON.parse(text.trim());
 
-    // Safeguard: Ensure total days generated matches requestedDays
+    // Post-processing: Calibrate days, dates and ensure exactly requestedDays
     if (result && Array.isArray(result.destinations) && result.destinations.length > 0) {
       let currentTotalDays = 0;
       result.destinations.forEach((dest: any) => {
         if (Array.isArray(dest.days)) currentTotalDays += dest.days.length;
       });
 
+      // If AI generated fewer days than requested, expand the last destination with full exploration days
       if (currentTotalDays < requestedDays && currentTotalDays > 0) {
         const lastDest = result.destinations[result.destinations.length - 1];
         if (lastDest && Array.isArray(lastDest.days) && lastDest.days.length > 0) {
-          const lastDay = lastDest.days[lastDest.days.length - 1];
+          const sampleDay = lastDest.days[lastDest.days.length - 1];
           let nextDayNum = currentTotalDays + 1;
           while (currentTotalDays < requestedDays) {
-            const clonedDay = JSON.parse(JSON.stringify(lastDay));
-            clonedDay.id = `day-${nextDayNum}-${Date.now()}`;
-            clonedDay.dayNumber = nextDayNum;
-            clonedDay.title = `Dia de Exploração Completa / Experiências Locais em ${lastDest.city} (Dia ${nextDayNum})`;
-            lastDest.days.push(clonedDay);
+            const newDay = {
+              id: `day-${nextDayNum}-${Date.now()}`,
+              dayNumber: nextDayNum,
+              dateStr: "",
+              title: `Exploração Completa e Experiências Locais em ${lastDest.city} (Dia ${nextDayNum})`,
+              activities: [
+                {
+                  id: `act-${nextDayNum}-1`,
+                  time: "09:30",
+                  type: "tour",
+                  location: `Passeios Culturais e Mirantes em ${lastDest.city}`,
+                  duration: "3h",
+                  cost: "Gratuito",
+                  mapsQuery: `${lastDest.city} centro historico`,
+                  notes: "Dica de Insider: Chegue cedo para aproveitar as ruelas e praças com iluminação matinal e sem filas."
+                },
+                {
+                  id: `act-${nextDayNum}-2`,
+                  time: "13:00",
+                  type: "dinner",
+                  location: `Almoço Tradicional em ${lastDest.city}`,
+                  duration: "1h30",
+                  cost: "R$ 85",
+                  mapsQuery: `${lastDest.city} restaurante tipico`,
+                  notes: "Gastronomia regional autêntica ($$ Moderado) com pratos típicos da região."
+                },
+                {
+                  id: `act-${nextDayNum}-3`,
+                  time: "15:30",
+                  type: "tour",
+                  location: `Mercados Locais, Souks e Galerias de ${lastDest.city}`,
+                  duration: "2h30",
+                  cost: "Gratuito",
+                  mapsQuery: `${lastDest.city} souk market`,
+                  notes: "Momento ideal para vivenciar o artesanato, aromas e especiarias da cidade."
+                },
+                {
+                  id: `act-${nextDayNum}-4`,
+                  time: "20:00",
+                  type: "dinner",
+                  location: `Jantar Especial com Música ao Vivo em ${lastDest.city}`,
+                  duration: "2h",
+                  cost: "R$ 120",
+                  mapsQuery: `${lastDest.city} restaurante jantar`,
+                  notes: "Experiência noturna acolhedora com ambiente memorável."
+                }
+              ]
+            };
+            lastDest.days.push(newDay);
             currentTotalDays++;
             nextDayNum++;
           }
+        }
+      }
+
+      // Sequentially assign exact calendar dates to all days
+      let globalDayIndex = 0;
+      result.destinations.forEach((dest: any) => {
+        if (Array.isArray(dest.days) && dest.days.length > 0) {
+          const destStartDayIndex = globalDayIndex;
+          const destStartObj = new Date(startDateObj.getTime() + destStartDayIndex * 24 * 60 * 60 * 1000);
+          
+          dest.days.forEach((day: any) => {
+            const currentDayObj = new Date(startDateObj.getTime() + globalDayIndex * 24 * 60 * 60 * 1000);
+            const dayOfWeek = weekdays[currentDayObj.getDay()];
+            const dayNum = String(currentDayObj.getDate()).padStart(2, "0");
+            const monthName = fullMonths[currentDayObj.getMonth()];
+            day.dayNumber = globalDayIndex + 1;
+            day.dateStr = `${dayOfWeek}, ${dayNum} de ${monthName}`;
+            globalDayIndex++;
+          });
+
+          const destEndDayIndex = globalDayIndex - 1;
+          const destEndObj = new Date(startDateObj.getTime() + destEndDayIndex * 24 * 60 * 60 * 1000);
+
+          dest.startDate = `${destStartObj.getFullYear()}-${String(destStartObj.getMonth() + 1).padStart(2, "0")}-${String(destStartObj.getDate()).padStart(2, "0")}`;
+          dest.endDate = `${destEndObj.getFullYear()}-${String(destEndObj.getMonth() + 1).padStart(2, "0")}-${String(destEndObj.getDate()).padStart(2, "0")}`;
+
+          const dStartFmt = `${String(destStartObj.getDate()).padStart(2, "0")} ${shortMonths[destStartObj.getMonth()]}`;
+          const dEndFmt = `${String(destEndObj.getDate()).padStart(2, "0")} ${shortMonths[destEndObj.getMonth()]}`;
+          dest.dates = `${dStartFmt} - ${dEndFmt}`;
+        }
+      });
+    }
+
+    // Ensure departure flight matches origin city if missing
+    if (result && Array.isArray(result.flights)) {
+      if (result.flights.length === 0) {
+        const destCity = result?.destinations?.[0]?.city || "Destino";
+        result.flights.push({
+          id: `flight-1-${Date.now()}`,
+          airline: "Companhia Aérea Selecionada",
+          flightCode: "VOO-101",
+          departureCity: originCity,
+          departureCode: originCity.includes("GRU") ? "GRU" : originCity.substring(0, 3).toUpperCase(),
+          departureTime: "08:00",
+          arrivalCity: destCity,
+          arrivalCode: destCity.substring(0, 3).toUpperCase(),
+          arrivalTime: "18:30",
+          duration: "10h30",
+          dateStr: startDateISO,
+          status: "Confirmado"
+        });
+      } else {
+        const firstFlight = result.flights[0];
+        if (firstFlight && (!firstFlight.departureCity || firstFlight.departureCity.includes("São Paulo") || originCity)) {
+          firstFlight.departureCity = originCity;
+          firstFlight.dateStr = startDateISO;
         }
       }
     }
@@ -475,13 +655,12 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido correspondente a este schema:
       const userId = (req as AuthRequest).user?.id ?? null;
       const city = result?.destinations?.[0]?.city || "";
       const country = result?.destinations?.[0]?.country || "";
-      const dates = result?.destinations?.[0]?.dates || "";
-      const generatedTitle = `${city}${country ? `, ${country}` : ""} ${dates ? `(${dates})` : ""}`.trim();
+      const generatedTitle = `${city}${country ? `, ${country}` : ""} (${totalDateRangeStr})`.trim();
       
       // Compute a clean, rich summary combining AI output or fallback
       let summaryText = typeof result?.summary === "string" && result.summary.trim() ? result.summary.trim() : "";
       if (!summaryText) {
-        summaryText = `${city}${country ? `, ${country}` : ""}: ${requestedDays} dias de roteiro inteligente com atrações culturais e gastronomia`;
+        summaryText = `${city}${country ? `, ${country}` : ""}: ${requestedDays} dias de roteiro com partida de ${originCity} (${totalDateRangeStr})`;
       }
 
       await db.insert(aiPromptLogs).values({

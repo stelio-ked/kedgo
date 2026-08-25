@@ -49,6 +49,9 @@ export default function FirstAccessOnboarding({
 
   // AI Flow State
   const [prompt, setPrompt] = useState("");
+  const [originCity, setOriginCity] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [durationDays, setDurationDays] = useState("15");
   const [step, setStep] = useState<"input" | "questions" | "generating">("input");
   const [error, setError] = useState("");
   const [evaluation, setEvaluation] = useState<EvaluationResult | null>(null);
@@ -158,7 +161,10 @@ export default function FirstAccessOnboarding({
         }),
         body: JSON.stringify({
           prompt: promptText,
-          answers: finalAnswers
+          answers: finalAnswers,
+          originCity: originCity.trim() || undefined,
+          startDate: startDate.trim() || undefined,
+          durationDays: durationDays ? parseInt(durationDays, 10) : undefined
         })
       });
 
@@ -389,7 +395,83 @@ export default function FirstAccessOnboarding({
             </div>
           ) : (
             /* INITIAL PROMPT INPUT STATE */
-            <div className="space-y-6 animate-fadeIn">
+            <div className="space-y-5 animate-fadeIn">
+              {/* Quick Logistics: Origin, Dates & Duration */}
+              <div className="p-4 bg-indigo-50/40 border border-indigo-100 rounded-2xl space-y-3.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-black text-indigo-900 uppercase tracking-wider flex items-center gap-1.5">
+                    <Plane className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>Logística & Datas da Viagem</span>
+                  </span>
+                  <span className="text-[10px] font-extrabold text-indigo-600 bg-indigo-100/70 px-2 py-0.5 rounded-md">
+                    Essencial para Roteiro Impecável
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {/* Origin */}
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-600 uppercase tracking-wider flex items-center gap-1">
+                      <MapPin className="w-3 h-3 text-indigo-500" /> Origem de Partida
+                    </label>
+                    <input
+                      type="text"
+                      value={originCity}
+                      onChange={(e) => setOriginCity(e.target.value)}
+                      placeholder="Ex: São Paulo (GRU)"
+                      className="w-full text-xs font-semibold px-3 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600 outline-none text-slate-800"
+                    />
+                  </div>
+
+                  {/* Start Date */}
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-600 uppercase tracking-wider flex items-center gap-1">
+                      <Calendar className="w-3 h-3 text-indigo-500" /> Data de Início
+                    </label>
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="w-full text-xs font-semibold px-3 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600 outline-none text-slate-800"
+                    />
+                  </div>
+
+                  {/* Duration */}
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-600 uppercase tracking-wider flex items-center gap-1">
+                      <Compass className="w-3 h-3 text-indigo-500" /> Duração (Dias)
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="number"
+                        min="1"
+                        max="30"
+                        value={durationDays}
+                        onChange={(e) => setDurationDays(e.target.value)}
+                        placeholder="15"
+                        className="w-16 text-xs font-black px-2.5 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600 outline-none text-slate-800 text-center"
+                      />
+                      <div className="flex gap-1 flex-1">
+                        {["5", "7", "10", "15", "20"].map((d) => (
+                          <button
+                            key={d}
+                            type="button"
+                            onClick={() => setDurationDays(d)}
+                            className={`flex-1 py-1.5 text-[10px] font-black rounded-lg border transition-all cursor-pointer ${
+                              durationDays === d
+                                ? "bg-indigo-600 text-white border-indigo-600"
+                                : "bg-white text-slate-600 border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50"
+                            }`}
+                          >
+                            {d}d
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <label className="block text-xs font-black text-slate-700 uppercase tracking-widest flex items-center gap-2">
                   <Globe className="w-4 h-4 text-indigo-600" />
@@ -400,7 +482,7 @@ export default function FirstAccessOnboarding({
                     rows={3}
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
-                    placeholder="Ex: 7 dias em Paris e Roma com foco em gastronomia, arte e hospedagem charmosa..."
+                    placeholder="Ex: Quero conhecer Marrakech e o deserto do Saara, com foco em cultura marroquina, souks tradicionais, gastronomia local e ritmo equilibrado..."
                     className="w-full p-4 bg-slate-50/80 border border-slate-200 rounded-2xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600 resize-none leading-relaxed placeholder:text-slate-400"
                   />
                 </div>
