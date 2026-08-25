@@ -363,11 +363,11 @@ export default function AIPlannerWidget({
               >
                 <div className="flex items-center gap-3">
                   <motion.div 
-                    className="p-1 rounded-full bg-white shadow-xs border border-amber-900/10"
+                    className="shrink-0 flex items-center justify-center"
                     whileHover={{ rotate: 12, scale: 1.1 }}
                     transition={{ type: "spring", stiffness: 400, damping: 10 }}
                   >
-                    <KedGoLogo variant="mark" size={36} />
+                    <KedGoLogo variant="mark" size={38} />
                   </motion.div>
                   <div>
                     <h4 className="font-extrabold text-slate-800 text-sm flex items-center gap-1.5">
@@ -833,76 +833,76 @@ export default function AIPlannerWidget({
                         {/* Orbiting Ring Visual Guide */}
                         <div className="absolute inset-1 rounded-full border border-dashed border-amber-300/40 pointer-events-none animate-spin" style={{ animationDuration: '24s' }} />
                         
-                        {/* Orbiting Decorative Travel Elements */}
+                        {/* Orbiting Decorative Travel Elements - Placed in FRONT (z-20/z-30) */}
                         <motion.div
-                          className="absolute w-3 h-3 bg-amber-400 rounded-full shadow-lg shadow-amber-400/50"
+                          className="absolute z-20 w-3 h-3 bg-amber-400 rounded-full shadow-lg shadow-amber-400/50 pointer-events-none"
                           animate={{ 
-                            x: [0, 48, 0, -48, 0], 
-                            y: [-48, 0, 48, 0, -48],
+                            x: [0, 52, 0, -52, 0], 
+                            y: [-52, 0, 52, 0, -52],
                             scale: [0.8, 1.2, 0.8],
                           }}
                           transition={{ repeat: Infinity, duration: 4.5, ease: "linear" }}
                         />
                         <motion.div
-                          className="absolute p-1 bg-white text-[#BD5738] rounded-full shadow-md border border-amber-200/60"
+                          className="absolute z-20 p-1.5 bg-white/95 text-[#BD5738] rounded-full shadow-lg border border-amber-200/80 pointer-events-none"
                           animate={{ 
-                            x: [36, -15, -36, 15, 36], 
-                            y: [15, 42, -15, -42, 15],
-                            scale: [1, 0.85, 1],
+                            x: [40, -18, -40, 18, 40], 
+                            y: [18, 48, -18, -48, 18],
+                            scale: [1, 0.9, 1],
                           }}
                           transition={{ repeat: Infinity, duration: 5.5, ease: "linear" }}
                         >
-                          <Camera className="w-3 h-3" />
+                          <Camera className="w-3.5 h-3.5" />
                         </motion.div>
                         <motion.div
-                          className="absolute p-1 bg-white text-[#1E3A5F] rounded-full shadow-md border border-slate-200"
+                          className="absolute z-20 p-1.5 bg-white/95 text-[#1E3A5F] rounded-full shadow-lg border border-slate-200 pointer-events-none"
                           animate={{ 
-                            x: [-32, 32, -32], 
-                            y: [32, -32, 32],
+                            x: [-38, 38, -38], 
+                            y: [38, -38, 38],
                             scale: [0.9, 1.15, 0.9],
                           }}
                           transition={{ repeat: Infinity, duration: 4, ease: "linear" }}
                         >
-                          <Luggage className="w-3 h-3" />
+                          <Luggage className="w-3.5 h-3.5" />
                         </motion.div>
 
                         {/* Sparkle badge */}
                         <motion.div
-                          className="absolute text-amber-500"
+                          className="absolute z-20 text-amber-500 pointer-events-none"
                           animate={{
                             scale: [1, 1.4, 1],
-                            opacity: [0.6, 1, 0.6],
+                            opacity: [0.7, 1, 0.7],
                             rotate: [0, 180, 360]
                           }}
                           transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
-                          style={{ top: '8%', right: '15%' }}
+                          style={{ top: '6%', right: '12%' }}
                         >
                           <Sparkles className="w-4 h-4 fill-amber-400" />
                         </motion.div>
                         
-                        {/* Central @kedpelomundo Stamp Logo */}
+                        {/* Central Transparent 3D Emblem Logo */}
                         <motion.div 
-                          className="relative z-10 p-1 bg-white rounded-full shadow-xl border-2 border-amber-900/15"
+                          className="relative z-10 flex items-center justify-center shrink-0 select-none filter drop-shadow-xl"
                           animate={{ 
                             scale: [1, 1.05, 1],
                             rotate: [0, 3, -3, 0]
                           }}
                           transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
                         >
-                          <KedGoLogo variant="stamp" size={72} showSlogan={false} />
+                          <KedGoLogo variant="stamp" size={80} showSlogan={false} />
                         </motion.div>
 
-                        {/* Orbiting Airplane */}
+                        {/* Orbiting Airplane in Front */}
                         <motion.div 
-                          className="absolute z-20"
+                          className="absolute z-30 pointer-events-none"
                           animate={{ 
-                            x: [0, 40, 0, -40, 0],
-                            y: [-36, 0, 36, 0, -36],
+                            x: [0, 48, 0, -48, 0], 
+                            y: [-42, 0, 42, 0, -42],
                             rotate: [-15, 45, 165, 225, 345]
                           }}
                           transition={{ repeat: Infinity, duration: 4.5, ease: "linear" }}
                         >
-                          <div className="p-1.5 bg-[#1E3A5F] text-amber-300 rounded-full shadow-md">
+                          <div className="p-1.5 bg-[#1E3A5F] text-amber-300 rounded-full shadow-xl border border-amber-300/40">
                             <Plane className="w-3.5 h-3.5" />
                           </div>
                         </motion.div>
