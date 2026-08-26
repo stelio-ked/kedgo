@@ -52,6 +52,7 @@ interface OverviewData {
     id: number;
     name: string;
     email: string;
+    role: string;
     planType: string;
     isLifetimePro: boolean;
     isAnnualPro: boolean;
@@ -588,6 +589,7 @@ export const SuperAdminOverview: React.FC<SuperAdminOverviewProps> = ({
                 <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-extrabold uppercase text-[10px] tracking-wider">
                   <tr>
                     <th className="py-3 px-4">Usuário</th>
+                    <th className="py-3 px-4">Cargo Global</th>
                     <th className="py-3 px-4">Plano</th>
                     <th className="py-3 px-4">Código Exclusivo</th>
                     <th className="py-3 px-4 text-center">Indicados</th>
@@ -601,11 +603,23 @@ export const SuperAdminOverview: React.FC<SuperAdminOverviewProps> = ({
                       <td className="py-3 px-4">
                         <div className="font-extrabold text-slate-900 flex items-center gap-1.5">
                           {u.name}
-                          {u.isSuperAdmin && (
-                            <span className="bg-amber-100 text-amber-800 text-[9px] px-1.5 py-0.2 rounded-full font-bold">ADM</span>
-                          )}
                         </div>
                         <div className="text-[10px] text-slate-400">{u.email}</div>
+                      </td>
+                      <td className="py-3 px-4">
+                        {u.role === "superadmin" || u.isSuperAdmin ? (
+                          <span className="bg-amber-100 border border-amber-300 text-amber-900 text-[10px] font-black px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                            <Crown className="w-3 h-3 text-amber-600" /> Super Admin
+                          </span>
+                        ) : u.role === "admin" ? (
+                          <span className="bg-blue-100 border border-blue-300 text-blue-900 text-[10px] font-black px-2 py-0.5 rounded-full">
+                            Admin
+                          </span>
+                        ) : (
+                          <span className="bg-slate-100 text-slate-600 text-[10px] font-medium px-2 py-0.5 rounded-full">
+                            Usuário
+                          </span>
+                        )}
                       </td>
                       <td className="py-3 px-4">
                         {u.isLifetimePro ? (

@@ -107,6 +107,10 @@ async function startServer() {
         -- Ensure summary column exists in existing database
         ALTER TABLE ai_prompt_logs ADD COLUMN IF NOT EXISTS summary TEXT;
 
+        -- Ensure role column exists in users table and promote Super Admin
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(50) DEFAULT 'user';
+        UPDATE users SET role = 'superadmin' WHERE id = 1 OR LOWER(TRIM(email)) = 'theoked25@gmail.com';
+
         -- Auto-populate summary for legacy rows where summary is null
         UPDATE ai_prompt_logs 
         SET summary = CASE 

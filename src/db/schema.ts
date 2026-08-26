@@ -15,6 +15,7 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   passwordHash: text("password_hash"),
   name: text("name").notNull(),
+  role: text("role").default("user").notNull(), // 'user' | 'admin' | 'superadmin'
   createdAt: timestamp("created_at").defaultNow(),
   passwordResetToken: text("password_reset_token"),
   passwordResetExpires: timestamp("password_reset_expires"),

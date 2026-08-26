@@ -240,10 +240,10 @@ router.post("/coupons", authMiddleware, async (req: AuthRequest, res) => {
 });
 
 // ─── Super Admin Helper ──────────────────────────────────────────────────────
-function isSuperAdmin(user?: { id?: number; email?: string } | null): boolean {
+function isSuperAdmin(user?: { id?: number; email?: string; role?: string } | null): boolean {
   if (!user) return false;
   const email = (user.email || "").toLowerCase().trim();
-  return user.id === 1 || email === "theoked25@gmail.com";
+  return user.role === "superadmin" || user.id === 1 || email === "theoked25@gmail.com";
 }
 
 // ─── GET /api/admin/overview (Visão Geral do App — Exclusivo Super Admin) ────
@@ -274,20 +274,24 @@ router.get("/overview", authMiddleware, async (req: AuthRequest, res) => {
       userItineraryCounts[it.ownerId] = (userItineraryCounts[it.ownerId] || 0) + 1;
     }
 
-    const usersFormatted = allUsers.map(u => ({
-      id: u.id,
-      name: u.name,
-      email: u.email,
-      planType: u.planType || "starter",
-      isLifetimePro: u.isLifetimePro,
-      isAnnualPro: u.isAnnualPro,
-      referralCode: u.referralCode,
-      referralCount: u.referralCount || 0,
-      referredBy: u.referredBy,
-      createdAt: u.createdAt,
-      itinerariesCount: userItineraryCounts[u.id] || 0,
-      isSuperAdmin: u.id === 1 || u.email.toLowerCase() === "theoked25@gmail.com",
-    }));
+    const usersFormatted = allUsers.map(u => {
+      const userRole = u.role || (u.id === 1 || u.email.toLowerCase() === "theoked25@gmail.com" ? "superadmin" : "user");
+      return {
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        role: userRole,
+        planType: u.planType || "starter",
+        isLifetimePro: u.isLifetimePro,
+        isAnnualPro: u.isAnnualPro,
+        referralCode: u.referralCode,
+        referralCount: u.referralCount || 0,
+        referredBy: u.referredBy,
+        createdAt: u.createdAt,
+        itinerariesCount: userItineraryCounts[u.id] || 0,
+        isSuperAdmin: userRole === "superadmin" || u.id === 1 || u.email.toLowerCase() === "theoked25@gmail.com",
+      };
+    });
 
     res.json({
       success: true,

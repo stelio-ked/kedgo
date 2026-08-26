@@ -24,10 +24,13 @@ interface SimulatedEmail {
 export const simulatedEmails: SimulatedEmail[] = [];
 
 function formatUserResponse(user: any) {
+  const isSuperAdminEmail = (user.email || "").toLowerCase().trim() === "theoked25@gmail.com" || user.id === 1;
+  const resolvedRole = user.role || (isSuperAdminEmail ? "superadmin" : "user");
   return {
     id: user.id,
     email: user.email,
     name: user.name,
+    role: resolvedRole,
     planType: user.planType ?? "starter",
     isLifetimePro: user.isLifetimePro ?? false,
     createdAt: user.createdAt,
@@ -109,10 +112,13 @@ router.post("/register", async (req, res) => {
     const verificationToken = crypto.randomBytes(32).toString("hex");
     const expires = new Date(Date.now() + 24 * 3600 * 1000); // 24h
 
+    const initialRole = (email.toLowerCase().trim() === "theoked25@gmail.com") ? "superadmin" : "user";
+
     const [newUser] = await db.insert(users).values({
       email,
       passwordHash,
       name,
+      role: initialRole,
       isVerified: false,
       provider: "email",
       referralCode: await generateUniqueReferralCode(),
@@ -221,7 +227,14 @@ router.post("/login", async (req, res) => {
       });
     }
 
-    const token = jwt.sign({ id: user.id, email: user.email, name: user.name }, JWT_SECRET, { expiresIn: '7d' });
+    const isSuperAdminEmail = (user.email || "").toLowerCase().trim() === "theoked25@gmail.com" || user.id === 1;
+    const resolvedRole = user.role || (isSuperAdminEmail ? "superadmin" : "user");
+
+    const token = jwt.sign(
+      { id: user.id, email: user.email, name: user.name, role: resolvedRole },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
     res.json({ success: true, token, user: formatUserResponse(user) });
   } catch (err: any) {
     res.status(500).json({ error: formatDbError(err) });
