@@ -113,7 +113,11 @@ export const SuperAdminOverview: React.FC<SuperAdminOverviewProps> = ({
   const [isCreatingCoupon, setIsCreatingCoupon] = useState(false);
 
   const fetchOverview = async () => {
-    if (!token) return;
+    if (!token) {
+      setError("Sessão não autenticada. Faça login com a conta de Administrador.");
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError("");
 
@@ -121,14 +125,21 @@ export const SuperAdminOverview: React.FC<SuperAdminOverviewProps> = ({
       const res = await fetch("/api/admin/overview", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const json = await res.json();
+      const rawText = await res.text();
+      let json: any = {};
+      try {
+        json = JSON.parse(rawText);
+      } catch {
+        throw new Error("Não foi possível carregar a visão geral. Verifique se o servidor está ativo.");
+      }
+
       if (res.ok) {
         setData(json);
       } else {
-        setError(json.error || "Erro ao carregar dados do administrador.");
+        setError(json.error || "Acesso restrito ao Super Administrador (theoked25@gmail.com).");
       }
     } catch (err: any) {
-      setError(err.message || "Erro de conexão.");
+      setError(err.message || "Erro de conexão com o servidor.");
     } finally {
       setLoading(false);
     }

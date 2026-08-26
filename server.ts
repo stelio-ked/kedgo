@@ -185,6 +185,7 @@ async function startServer() {
   app.use("/api/chat", chatRouter); // inclui SSE em GET /api/chat/stream/:itineraryId
 
   app.use("/api/gemini", aiRouter);
+  app.use("/api/admin", adminRouter);
   app.use("/api", adminRouter);
   app.use("/api/referral", referralRouter);
   app.use("/api/plan", planAccessRouter);
