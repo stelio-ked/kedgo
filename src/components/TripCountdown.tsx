@@ -20,7 +20,9 @@ import {
   Camera,
   Share2,
   ChevronRight,
-  Star
+  Star,
+  Eye,
+  EyeOff
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Destination, FlightInfo, Traveler, CostItem } from "../types";
@@ -49,6 +51,23 @@ export default function TripCountdown({
   const [copied, setCopied] = useState(false);
   const [viewMode, setViewMode] = useState<"summary" | "countdown">("countdown");
   const [hoverRatings, setHoverRatings] = useState<Record<string, number>>({});
+  const [hideValues, setHideValues] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem("kedgo_hide_overview_values") === "true";
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleHideValues = () => {
+    setHideValues(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem("kedgo_hide_overview_values", String(next));
+      } catch {}
+      return next;
+    });
+  };
   const [timeLeft, setTimeLeft] = useState<{
     days: number;
     hours: number;
@@ -480,11 +499,33 @@ ${citiesRatingText}
             {/* Right Column: Unified Financials & Highlights */}
             <div className="lg:col-span-5 bg-gradient-to-b from-white/10 to-white/5 border border-white/10 rounded-2xl p-6 flex flex-col justify-between space-y-5 backdrop-blur-md">
               <div className="space-y-4">
-                <div className="flex items-center gap-2 text-emerald-400">
-                  <DollarSign className="w-5 h-5 p-1 bg-emerald-500/20 rounded-lg border border-emerald-500/30" />
-                  <span className="text-xs font-black uppercase tracking-wider text-slate-200">
-                    Custos Unificados da Viagem
-                  </span>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-emerald-400">
+                    <DollarSign className="w-5 h-5 p-1 bg-emerald-500/20 rounded-lg border border-emerald-500/30" />
+                    <span className="text-xs font-black uppercase tracking-wider text-slate-200">
+                      Custos Unificados da Viagem
+                    </span>
+                  </div>
+
+                  {/* Botão de Olho estilo Banco (Ocultar/Exibir Valores) */}
+                  <button
+                    onClick={toggleHideValues}
+                    className="p-1.5 px-2.5 text-slate-300 hover:text-white bg-white/10 hover:bg-white/20 active:scale-95 rounded-xl border border-white/10 transition-all cursor-pointer flex items-center gap-1.5 text-[11px] font-bold shadow-xs"
+                    title={hideValues ? "Clique para exibir os valores" : "Clique para ocultar os valores"}
+                    aria-label={hideValues ? "Exibir valores da viagem" : "Ocultar valores da viagem"}
+                  >
+                    {hideValues ? (
+                      <>
+                        <EyeOff className="w-3.5 h-3.5 text-amber-300" />
+                        <span className="text-[10px] text-amber-200">Oculto</span>
+                      </>
+                    ) : (
+                      <>
+                        <Eye className="w-3.5 h-3.5 text-slate-300" />
+                        <span className="text-[10px] text-slate-300">Visível</span>
+                      </>
+                    )}
+                  </button>
                 </div>
 
                 {/* Unified Cost Highlights */}
@@ -493,15 +534,23 @@ ${citiesRatingText}
                     <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-widest block">
                       Investimento Total
                     </span>
-                    <span className="text-2xl md:text-3xl font-black text-amber-300 font-mono">
-                      {totalCost.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                    <span className="text-2xl md:text-3xl font-black text-amber-300 font-mono tracking-tight">
+                      {hideValues ? (
+                        <span className="text-slate-400 select-none font-sans font-extrabold">R$ •••••••</span>
+                      ) : (
+                        totalCost.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+                      )}
                     </span>
                   </div>
 
                   <div className="pt-2 border-t border-white/10 flex items-center justify-between text-xs">
                     <span className="text-slate-300 font-medium">Por Viajante ({travelersCount}):</span>
                     <span className="font-black text-emerald-400 font-mono text-sm">
-                      {costPerPerson.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                      {hideValues ? (
+                        <span className="text-slate-400 select-none font-sans font-bold">R$ ••••••</span>
+                      ) : (
+                        costPerPerson.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+                      )}
                     </span>
                   </div>
                 </div>

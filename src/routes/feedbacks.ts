@@ -3,6 +3,7 @@ import { eq, desc, and, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { feedbacks, users } from "../db/schema.js";
 import { authMiddleware, AuthRequest } from "../middleware/auth.js";
+import { sendEmail, buildAdminFeedbackNotificationEmail } from "../services/email.js";
 
 const router = Router();
 
@@ -62,6 +63,25 @@ router.post("/", async (req: any, res) => {
       .returning();
 
     console.log(`[Feedback] Novo feedback recebido (${cleanType}) de ${finalEmail}: "${newFeedback.subject}"`);
+
+    // Disparar e-mail de notificação em tempo real para o Super Admin
+    try {
+      const emailPayload = buildAdminFeedbackNotificationEmail({
+        userName: finalName,
+        userEmail: finalEmail,
+        type: cleanType,
+        subject: newFeedback.subject,
+        message: newFeedback.message,
+        rating: newFeedback.rating,
+        createdAt: newFeedback.createdAt,
+      });
+      // Envia em background
+      sendEmail(emailPayload).catch((err: any) => {
+        console.warn("[Feedback Email Error] Falha ao enviar alerta de feedback:", err.message);
+      });
+    } catch (e: any) {
+      console.warn("[Feedback Email Build Error]", e.message);
+    }
 
     res.status(201).json({
       success: true,

@@ -416,3 +416,121 @@ export function buildReferralInviteEmail(opts: {
   return { to: inviteeEmail, subject: title, html, text };
 }
 
+// ─── 5. Alerta de Novo Feedback para o Administrador ─────────────────────────
+export function buildAdminFeedbackNotificationEmail(params: {
+  userName: string;
+  userEmail: string;
+  type: string;
+  subject: string;
+  message: string;
+  rating?: number | null;
+  createdAt?: Date | string;
+}): EmailPayload {
+  const { userName, userEmail, type, subject, message, rating, createdAt } = params;
+
+  const typeLabels: Record<string, { label: string; icon: string; color: string }> = {
+    suggestion: { label: "Sugestão de Melhoria", icon: "💡", color: "#f59e0b" },
+    bug: { label: "Relato de Erro / Bug", icon: "🐞", color: "#e11d48" },
+    question: { label: "Dúvida de Uso", icon: "❓", color: "#2563eb" },
+    praise: { label: "Elogio", icon: "⭐", color: "#059669" },
+    other: { label: "Outro Feedback", icon: "📝", color: "#64748b" },
+  };
+
+  const badge = typeLabels[type] || typeLabels.other;
+  const adminEmail = process.env.ADMIN_EMAIL || "theoked25@gmail.com";
+  const title = `[KedGo! Feedback] ${badge.icon} ${badge.label}: ${subject}`;
+  const dateFormatted = createdAt ? new Date(createdAt).toLocaleString("pt-BR") : new Date().toLocaleString("pt-BR");
+
+  const starsHtml = rating && rating >= 1 && rating <= 5
+    ? `<p style="margin:8px 0 0;font-size:14px;color:#f59e0b;">Avaliação: ${"⭐".repeat(rating)} (${rating}/5)</p>`
+    : "";
+
+  const html = `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>${title}</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f4f6f8;font-family:'Segoe UI',Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f6f8;padding:32px 16px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);border:1px solid #e2e8f0;">
+          
+          <!-- Header -->
+          <tr>
+            <td style="background:linear-gradient(135deg,#1E3A5F 0%,#0F172A 100%);padding:28px 36px;text-align:center;">
+              <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:900;letter-spacing:-0.5px;">KedGo!</h1>
+              <p style="margin:6px 0 0;color:#fbbf24;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;">
+                🔔 Notificação Executiva para o Super ADM
+              </p>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:32px 36px;">
+              <div style="display:inline-block;background:${badge.color}15;border:1px solid ${badge.color}40;color:${badge.color};font-weight:800;font-size:12px;padding:4px 10px;border-radius:20px;margin-bottom:16px;">
+                ${badge.icon} ${badge.label}
+              </div>
+
+              <h2 style="margin:0 0 16px;font-size:18px;color:#1e293b;font-weight:800;line-height:1.4;">
+                ${subject}
+              </h2>
+
+              <!-- Viajante Card -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px;margin-bottom:20px;">
+                <tr>
+                  <td>
+                    <p style="margin:0;font-size:13px;color:#64748b;"><strong>Enviado por:</strong> ${userName}</p>
+                    <p style="margin:4px 0 0;font-size:13px;color:#64748b;"><strong>E-mail:</strong> <a href="mailto:${userEmail}" style="color:#2563eb;text-decoration:none;">${userEmail}</a></p>
+                    <p style="margin:4px 0 0;font-size:12px;color:#94a3b8;"><strong>Data / Hora:</strong> ${dateFormatted}</p>
+                    ${starsHtml}
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Mensagem -->
+              <p style="margin:0 0 8px;font-size:12px;font-weight:800;color:#475569;text-transform:uppercase;letter-spacing:0.5px;">
+                Mensagem do Viajante:
+              </p>
+              <div style="background:#ffffff;border:1px solid #cbd5e1;border-left:4px solid #1E3A5F;border-radius:8px;padding:16px;font-size:14px;color:#334155;line-height:1.6;white-space:pre-wrap;">${message}</div>
+
+              <!-- CTA -->
+              <table cellpadding="0" cellspacing="0" style="margin:28px auto 0;">
+                <tr>
+                  <td style="background:#1E3A5F;border-radius:10px;">
+                    <a href="https://kedgo.pro" target="_blank"
+                       style="display:inline-block;padding:12px 28px;color:#ffffff;font-size:14px;font-weight:700;text-decoration:none;border-radius:10px;">
+                      Acessar Painel do Super ADM
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background:#f8fafc;padding:16px 36px;border-top:1px solid #e2e8f0;text-align:center;">
+              <p style="margin:0;font-size:11px;color:#94a3b8;">
+                KedGo! — Plataforma Inteligente de Viagens.<br />
+                Esta é uma notificação em tempo real enviada a partir do recebimento de feedback na plataforma.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+
+  const text = `[KedGo! Feedback Recebido]\n\nTipo: ${badge.label}\nAssunto: ${subject}\n\nEnviado por: ${userName} (${userEmail})\nData: ${dateFormatted}\n\nMensagem:\n${message}\n\nAcesse o painel em https://kedgo.pro`;
+
+  return { to: adminEmail, subject: title, html, text };
+}
+
