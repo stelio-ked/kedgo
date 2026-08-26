@@ -140,6 +140,13 @@ router.get("/stats", authMiddleware, async (req: AuthRequest, res) => {
       await db.update(users).set(updates).where(eq(users.id, userId));
     }
 
+    // Sincronizar convites pendentes antigos que ainda tinham KED10
+    try {
+      await db.update(referralInvites)
+        .set({ referralCode })
+        .where(and(eq(referralInvites.referrerId, userId), or(eq(referralInvites.referralCode, "KED10"), eq(referralInvites.referralCode, "KED1"))));
+    } catch {}
+
     // Buscar e-mails de convite que ainda não se cadastraram
     // (não estão na tabela users)
     const emailInvites = await db
@@ -317,23 +324,30 @@ router.post("/resend", authMiddleware, async (req: AuthRequest, res) => {
     const [referrer] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
     if (!referrer) return res.status(404).json({ error: "Usuário não encontrado" });
 
+    // Garantir que usamos o referralCode atual e individual do remetente
+    let referralCode = referrer.referralCode;
+    if (!referralCode || referralCode === "KED1" || referralCode === "KED10") {
+      referralCode = await generateUniqueReferralCode();
+      await db.update(users).set({ referralCode }).where(eq(users.id, userId));
+    }
+
     const host = req.headers["x-forwarded-host"] || req.get("host") || "kedgo.pro";
     const proto = req.headers["x-forwarded-proto"] || req.protocol || "https";
     const defaultOrigin = `${proto}://${host}`;
     const appUrl = (process.env.APP_URL && process.env.APP_URL.trim() ? process.env.APP_URL.trim() : defaultOrigin).replace(/\/$/, "");
-    const inviteUrl = `${appUrl}?ref=${invite.referralCode}`;
+    const inviteUrl = `${appUrl}?ref=${referralCode}`;
 
     const emailPayload = buildReferralInviteEmail({
       referrerName: referrer.name || "Um amigo",
       inviteeEmail: invite.inviteeEmail,
-      referralCode: invite.referralCode,
+      referralCode,
       inviteUrl,
     });
 
-    // Atualizar sentAt
+    // Atualizar sentAt e referralCode atualizado no banco
     await db
       .update(referralInvites)
-      .set({ sentAt: sql`NOW()` })
+      .set({ sentAt: sql`NOW()`, referralCode })
       .where(eq(referralInvites.id, inviteId));
 
     let sent = false;
