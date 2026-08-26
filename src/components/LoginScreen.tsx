@@ -120,13 +120,16 @@ export default function LoginScreen({ onLogin, onTravelerLogin }: LoginScreenPro
           const fbUser = result.user;
           if (!fbUser.email) throw new Error("Sem e-mail do Firebase.");
 
+          const storedRefCodeRedirect = localStorage.getItem("kedgo_referral_code");
           const res = await fetch("/api/auth/firebase-google-login", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               email: fbUser.email,
               name: fbUser.displayName || fbUser.email.split("@")[0],
-              firebaseUid: fbUser.uid
+              provider: "google",
+              firebaseUid: fbUser.uid,
+              referralCode: storedRefCodeRedirect
             })
           });
           const data = await res.json();
@@ -267,6 +270,7 @@ export default function LoginScreen({ onLogin, onTravelerLogin }: LoginScreenPro
         throw new Error("Não foi possível obter o e-mail da conta Apple através do Firebase.");
       }
 
+      const storedRefCodeApple = localStorage.getItem("kedgo_referral_code");
       const res = await fetch("/api/auth/firebase-social-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -274,7 +278,8 @@ export default function LoginScreen({ onLogin, onTravelerLogin }: LoginScreenPro
           email: fbUser.email,
           name: fbUser.displayName || fbUser.email.split("@")[0],
           provider: "apple",
-          firebaseUid: fbUser.uid
+          firebaseUid: fbUser.uid,
+          referralCode: storedRefCodeApple
         })
       });
       const data = await res.json();
@@ -354,10 +359,11 @@ export default function LoginScreen({ onLogin, onTravelerLogin }: LoginScreenPro
     setSuccessMsg("");
     setLoading(true);
     try {
+      const storedRefCodeGmail = localStorage.getItem("kedgo_referral_code");
       const res = await fetch("/api/auth/gmail-signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: googleEmail, name: googleName })
+        body: JSON.stringify({ email: googleEmail, name: googleName, referralCode: storedRefCodeGmail })
       });
       const data = await res.json();
 

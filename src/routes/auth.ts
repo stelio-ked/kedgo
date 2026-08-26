@@ -55,6 +55,20 @@ async function processReferralCode(newUserId: number, referralCode?: string | nu
   try {
     const code = referralCode.trim().toUpperCase();
 
+    // Idempotência: verificar se este usuário já foi processado (já tem referredBy)
+    const [currentUser] = await db.select({ referredBy: users.referredBy }).from(users).where(eq(users.id, newUserId)).limit(1);
+    if (currentUser?.referredBy) {
+      console.log(`[Referral] User ${newUserId} já possui referredBy="${currentUser.referredBy}". Ignorando processamento duplicado.`);
+      return;
+    }
+
+    // Verificar se já existe um registro de indicação para este usuário
+    const [existingReferral] = await db.select({ id: referrals.id }).from(referrals).where(eq(referrals.referredUserId, newUserId)).limit(1);
+    if (existingReferral) {
+      console.log(`[Referral] Indicação já registrada para user ${newUserId}. Ignorando.`);
+      return;
+    }
+
     // Verificar se é um cupom promocional genérico
     try {
       const [promo] = await db
@@ -320,6 +334,8 @@ router.post("/gmail-signup", async (req, res) => {
       return res.status(400).json({ error: "Por favor, utilize uma conta de e-mail do Google (@gmail.com) válida." });
     }
 
+    const { referralCode: refCode } = req.body;
+
     const [existingUser] = await db.select().from(users).where(eq(users.email, email)).limit(1);
 
     let targetUserId: number;
@@ -333,9 +349,19 @@ router.post("/gmail-signup", async (req, res) => {
       }).returning();
       targetUserId = newUser.id;
       isNewAccount = true;
+
+      // Processar código de indicação para novo usuário imediatamente
+      if (refCode) {
+        await processReferralCode(newUser.id, refCode);
+      }
     } else {
       targetUserId = existingUser.id;
       isNewAccount = false;
+
+      // Para usuário existente sem referredBy, gravar indicação retroativamente
+      if (refCode && !existingUser.referredBy) {
+        await processReferralCode(existingUser.id, refCode);
+      }
     }
 
     const token = crypto.randomBytes(32).toString("hex");
@@ -430,6 +456,12 @@ router.post("/gmail-set-password", async (req, res) => {
       passwordResetExpires: null
     }).where(eq(users.id, user.id));
 
+    // Garantir referralCode único para o usuário
+    if (!user.referralCode || user.referralCode === "KED1" || user.referralCode === "KED10") {
+      const newCode = await generateUniqueReferralCode();
+      await db.update(users).set({ referralCode: newCode }).where(eq(users.id, user.id));
+    }
+
     const userEmail = user.email;
     const indexList: number[] = [];
     simulatedEmails.forEach((m, idx) => {
@@ -481,8 +513,18 @@ router.post("/firebase-google-login", async (req, res) => {
       }).returning();
       existingUser = newUser;
       await processReferralCode(newUser.id, refCode);
-    } else if (existingUser.isVerified === false) {
-      await db.update(users).set({ isVerified: true }).where(eq(users.id, existingUser.id));
+    } else {
+      // Usuário existente: atribuir indicação retroativamente se chegou via link de referral e ainda não tem referredBy
+      if (existingUser.isVerified === false) {
+        await db.update(users).set({ isVerified: true }).where(eq(users.id, existingUser.id));
+      }
+      const { referralCode: refCode } = req.body;
+      if (refCode && !existingUser.referredBy) {
+        await processReferralCode(existingUser.id, refCode);
+        // Recarregar dados atualizados
+        const [updated] = await db.select().from(users).where(eq(users.id, existingUser.id)).limit(1);
+        if (updated) existingUser = updated;
+      }
     }
 
     const appToken = jwt.sign(
@@ -529,8 +571,17 @@ router.post("/firebase-social-login", async (req, res) => {
       }).returning();
       existingUser = newUser;
       await processReferralCode(newUser.id, refCode);
-    } else if (existingUser.isVerified === false) {
-      await db.update(users).set({ isVerified: true }).where(eq(users.id, existingUser.id));
+    } else {
+      // Usuário existente: atribuir indicação retroativamente se chegou via link de referral e ainda não tem referredBy
+      if (existingUser.isVerified === false) {
+        await db.update(users).set({ isVerified: true }).where(eq(users.id, existingUser.id));
+      }
+      const { referralCode: refCode } = req.body;
+      if (refCode && !existingUser.referredBy) {
+        await processReferralCode(existingUser.id, refCode);
+        const [updated] = await db.select().from(users).where(eq(users.id, existingUser.id)).limit(1);
+        if (updated) existingUser = updated;
+      }
     }
 
     const appToken = jwt.sign(
