@@ -437,7 +437,11 @@ export function buildAdminFeedbackNotificationEmail(params: {
   };
 
   const badge = typeLabels[type] || typeLabels.other;
-  const adminEmail = process.env.ADMIN_EMAIL || "theoked25@gmail.com";
+  // Envia para o e-mail principal do sistema E para o superadmin pessoal
+  const adminEmail = [
+    process.env.ADMIN_EMAIL || "theoked25@gmail.com",
+    "contato@kedgo.pro",
+  ].join(",");
   const title = `[KedGo! Feedback] ${badge.icon} ${badge.label}: ${subject}`;
   const dateFormatted = createdAt ? new Date(createdAt).toLocaleString("pt-BR") : new Date().toLocaleString("pt-BR");
 
