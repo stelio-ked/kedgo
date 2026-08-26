@@ -83,8 +83,7 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
 
   if (!isOpen) return null;
 
-  const rawCode = data?.referralCode;
-  const referralCode = (!rawCode || rawCode === "KED1") ? "KED10" : rawCode;
+  const referralCode = data?.referralCode || "";
   const completedReferrals = data?.completedReferrals ?? 0;
   const isLifetimePro = data?.isLifetimePro ?? propIsLifetimePro;
   const referralsList: ReferralEntry[] = data?.referrals || [];

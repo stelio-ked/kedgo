@@ -1,8 +1,8 @@
 import { Router } from "express";
 import Stripe from "stripe";
-import { eq, sql } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
-import { users, itineraries, foundersQuota } from "../db/schema.js";
+import { users, itineraries, foundersQuota, promoCoupons } from "../db/schema.js";
 import { authMiddleware, AuthRequest } from "../middleware/auth.js";
 import { completeReferralForUser } from "./referral.js";
 
@@ -88,18 +88,40 @@ router.post("/create-checkout-session", authMiddleware, async (req: AuthRequest,
       }
     }
 
-    // ─── Anti-Fraud / Server-Side Discount Validation ────────────────────────
+    // ─── Anti-Fraud / Server-Side Discount Validation ────────────────────
     let validDiscount = false;
-    let isCouponKed10 = false;
+    let isPromoCoupon = false;
     let validatedDiscountCode = "";
+    let promoDiscountCents = 1000; // padrão: R$ 10,00
 
     if (discountCode && typeof discountCode === "string") {
       const cleanCode = discountCode.trim().toUpperCase();
-      if (cleanCode === "KED10") {
-        validDiscount = true;
-        isCouponKed10 = true;
-        validatedDiscountCode = "KED10";
-      } else {
+
+      // 1. Verificar se é um cupom promocional do admin
+      try {
+        const [promo] = await db
+          .select({ code: promoCoupons.code, discountCents: promoCoupons.discountCents })
+          .from(promoCoupons)
+          .where(and(eq(promoCoupons.code, cleanCode), eq(promoCoupons.isActive, true)))
+          .limit(1);
+
+        if (promo) {
+          validDiscount = true;
+          isPromoCoupon = true;
+          validatedDiscountCode = cleanCode;
+          promoDiscountCents = promo.discountCents;
+
+          // Incrementar contador de uso do cupom
+          await db.update(promoCoupons)
+            .set({ usageCount: sql`${promoCoupons.usageCount} + 1` })
+            .where(eq(promoCoupons.code, cleanCode));
+        }
+      } catch {
+        // Tabela pode não existir — fallback legado
+      }
+
+      // 2. Se não é cupom promo, verificar se é código de referral individual
+      if (!validDiscount) {
         const [referrer] = await db
           .select({ id: users.id })
           .from(users)
@@ -116,7 +138,7 @@ router.post("/create-checkout-session", authMiddleware, async (req: AuthRequest,
 
     const baseUrl = getAppUrl(req);
 
-    // ─── Price & Title calculation ───────────────────────────────────────────
+    // ─── Price & Title calculation ───────────────────────────────────────
     let baseAmountCents = 7990; // Default Annual: R$ 79,90
     let planTitle = "KedGo! Pro Anual (1 Ano)";
     let planDescription = "Acesso ilimitado a todas as viagens, roteiros com IA, OCR de recibos e modo 100% offline.";
@@ -131,16 +153,10 @@ router.post("/create-checkout-session", authMiddleware, async (req: AuthRequest,
       planDescription = "Acesso vitalício irrestrito a todos os recursos atuais e futuros do KedGo! sem mensalidades.";
     }
 
-    // Calculate discount:
-    // KED10 = 10% de desconto
-    // Referral code = R$ 10,00 de desconto
+    // Desconto unificado: R$ 10,00 para referral, ou valor definido pelo cupom promo
     let discountCents = 0;
     if (validDiscount) {
-      if (isCouponKed10) {
-        discountCents = Math.round(baseAmountCents * 0.10);
-      } else {
-        discountCents = 1000; // R$ 10,00
-      }
+      discountCents = isPromoCoupon ? promoDiscountCents : 1000; // R$ 10,00 fixo para referral
     }
 
     const finalAmountCents = Math.max(1000, baseAmountCents - discountCents);

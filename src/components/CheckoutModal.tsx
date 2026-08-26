@@ -45,7 +45,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   );
   const [discountCode, setDiscountCode] = useState('');
   const [isDiscountApplied, setIsDiscountApplied] = useState(false);
-  const [isCouponKed10, setIsCouponKed10] = useState(false);
   const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
   const [couponError, setCouponError] = useState('');
   const [validatedSourceName, setValidatedSourceName] = useState('');
@@ -75,31 +74,19 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     }
   }, [isOpen]);
 
+  const [discountValue, setDiscountValue] = useState<number>(10.00);
+
   // Server-side verification function for discount/referral code
   const validateAndApplyCode = async (codeToValidate: string, isSilent = false) => {
     const clean = codeToValidate.trim().toUpperCase();
     if (!clean || clean.length < 3) {
       setIsDiscountApplied(false);
-      setIsCouponKed10(false);
       if (!isSilent) setCouponError("Insira um código válido com pelo menos 3 caracteres.");
       return false;
     }
 
     setIsValidatingCoupon(true);
     setCouponError("");
-
-    if (clean === "KED10") {
-      setDiscountCode("KED10");
-      setIsDiscountApplied(true);
-      setIsCouponKed10(true);
-      setValidatedSourceName("Cupom Oficial @KedPeloMundo (10% OFF)");
-      setCouponError("");
-      setIsValidatingCoupon(false);
-      try {
-        localStorage.setItem("kedgo_referral_code", "KED10");
-      } catch {}
-      return true;
-    }
 
     try {
       const res = await fetch(`/api/referral/validate/${encodeURIComponent(clean)}`);
@@ -108,7 +95,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       if (data && data.valid) {
         setDiscountCode(clean);
         setIsDiscountApplied(true);
-        setIsCouponKed10(false);
+        const val = data.discountCents ? data.discountCents / 100 : 10.00;
+        setDiscountValue(val);
         setValidatedSourceName(data.referrerName || clean);
         setCouponError("");
         try {
@@ -117,7 +105,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         return true;
       } else {
         setIsDiscountApplied(false);
-        setIsCouponKed10(false);
         setValidatedSourceName("");
         setCouponError("Código promocional ou de indicação inválido.");
         try {
@@ -183,16 +170,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
   const basePrice = getBasePrice(selectedPlan);
   
-  // Calculate discount: KED10 = 10%, Referral = R$ 10,00
-  let discountAmount = 0;
-  if (isDiscountApplied) {
-    if (isCouponKed10) {
-      discountAmount = Number((basePrice * 0.10).toFixed(2));
-    } else {
-      discountAmount = 10.00;
-    }
-  }
-
+  // Desconto unificado: R$ 10,00 ou valor customizado do cupom
+  const discountAmount = isDiscountApplied ? discountValue : 0;
   const finalPrice = Math.max(10.00, Number((basePrice - discountAmount).toFixed(2)));
 
   const handleApplyDiscount = async (e: React.FormEvent) => {
@@ -203,10 +182,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
   const handleRemoveDiscount = () => {
     setIsDiscountApplied(false);
-    setIsCouponKed10(false);
     setDiscountCode('');
     setCouponError('');
     setValidatedSourceName('');
+    setDiscountValue(10.00);
     try {
       localStorage.removeItem("kedgo_referral_code");
     } catch {}
@@ -471,7 +450,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   <div className="relative flex-1">
                     <input
                       type="text"
-                      placeholder="Cupom promocional (ex: KED10)"
+                      placeholder="Código de indicação ou cupom (ex: KED-XXXXX)"
                       value={discountCode}
                       onChange={(e) => {
                         setDiscountCode(e.target.value.toUpperCase());

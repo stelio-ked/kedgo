@@ -1,11 +1,38 @@
 import { Router } from "express";
-import { eq, and, sql } from "drizzle-orm";
+import crypto from "crypto";
+import { eq, and, sql, isNull } from "drizzle-orm";
 import { db } from "../db/index.js";
-import { users, referrals, referralInvites } from "../db/schema.js";
+import { users, referrals, referralInvites, promoCoupons } from "../db/schema.js";
 import { authMiddleware, AuthRequest } from "../middleware/auth.js";
 import { sendEmail, buildReferralInviteEmail } from "../services/email.js";
 
 const router = Router();
+
+// ─── Gerador de Código de Referral Único ─────────────────────────────────────
+// Formato: KED-XXXXX (5 caracteres alfanuméricos, sem ambíguos I/O/0/1)
+const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+export async function generateUniqueReferralCode(): Promise<string> {
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const bytes = crypto.randomBytes(5);
+    let code = "KED-";
+    for (let i = 0; i < 5; i++) {
+      code += ALPHABET[bytes[i] % ALPHABET.length];
+    }
+
+    // Verificar unicidade no banco
+    const [existing] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.referralCode, code))
+      .limit(1);
+
+    if (!existing) return code;
+  }
+
+  // Fallback com timestamp se todas as tentativas colidirem (improvável)
+  return `KED-${Date.now().toString(36).toUpperCase().slice(-5)}`;
+}
 
 /**
  * Conclui a indicação quando um usuário convidado compra um produto (Passe ou Pro).
@@ -66,11 +93,11 @@ router.get("/stats", authMiddleware, async (req: AuthRequest, res) => {
     const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
     if (!user) return res.status(404).json({ error: "Usuário não encontrado" });
 
-    // Gerar referralCode se ainda não existe ou se era KED1
+    // Gerar referralCode único se ainda não existe ou se era código genérico antigo
     let referralCode = user.referralCode;
-    if (!referralCode || referralCode === "KED1") {
-      referralCode = "KED10";
-      await db.update(users).set({ referralCode: "KED10" }).where(eq(users.id, userId));
+    if (!referralCode || referralCode === "KED1" || referralCode === "KED10") {
+      referralCode = await generateUniqueReferralCode();
+      await db.update(users).set({ referralCode }).where(eq(users.id, userId));
     }
 
     // Buscar todos os referrals deste usuário (como referrer) — usuários que já se cadastraram
@@ -193,11 +220,11 @@ router.post("/invite", authMiddleware, async (req: AuthRequest, res) => {
       return res.status(400).json({ error: "Este e-mail já possui uma conta no KedGo!" });
     }
 
-    // Gerar referralCode se ainda não existe ou se era KED1
+    // Gerar referralCode único se ainda não existe ou se era código genérico antigo
     let referralCode = referrer.referralCode;
-    if (!referralCode || referralCode === "KED1") {
-      referralCode = "KED10";
-      await db.update(users).set({ referralCode: "KED10" }).where(eq(users.id, userId));
+    if (!referralCode || referralCode === "KED1" || referralCode === "KED10") {
+      referralCode = await generateUniqueReferralCode();
+      await db.update(users).set({ referralCode }).where(eq(users.id, userId));
     }
 
     // Salvar o convite na tabela referral_invites (upsert: atualiza sentAt se já existir)
@@ -337,7 +364,7 @@ router.post("/resend", authMiddleware, async (req: AuthRequest, res) => {
 });
 
 // ─── GET /api/referral/validate/:code ────────────────────────────────────────
-// Valida se um código de referral ou cupom promocional existe (público, sem auth)
+// Valida se um código de referral individual ou cupom promocional existe (público, sem auth)
 router.get("/validate/:code", async (req, res) => {
   try {
     const { code } = req.params;
@@ -345,14 +372,27 @@ router.get("/validate/:code", async (req, res) => {
 
     const cleanCode = code.trim().toUpperCase();
 
-    if (cleanCode === "KED10" || cleanCode === "KED1") {
-      return res.json({
-        valid: true,
-        referrerName: "KedGo Promocional (KED10)",
-        isPromo: true,
-      });
+    // 1. Verificar se é um cupom promocional gerenciado pelo admin
+    try {
+      const [promo] = await db
+        .select({ code: promoCoupons.code, description: promoCoupons.description, discountCents: promoCoupons.discountCents })
+        .from(promoCoupons)
+        .where(and(eq(promoCoupons.code, cleanCode), eq(promoCoupons.isActive, true)))
+        .limit(1);
+
+      if (promo) {
+        return res.json({
+          valid: true,
+          referrerName: promo.description || `Cupom Promocional (${promo.code})`,
+          isPromo: true,
+          discountCents: promo.discountCents,
+        });
+      }
+    } catch {
+      // Tabela pode não existir ainda — prosseguir para códigos de referral
     }
 
+    // 2. Verificar se é um código de referral individual de um usuário
     const [referrer] = await db
       .select({ id: users.id, name: users.name })
       .from(users)

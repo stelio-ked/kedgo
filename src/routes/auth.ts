@@ -2,11 +2,12 @@ import { Router } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { db } from "../db/index.js";
-import { users, referrals } from "../db/schema.js";
+import { users, referrals, promoCoupons } from "../db/schema.js";
 import { authMiddleware, AuthRequest, JWT_SECRET, formatDbError } from "../middleware/auth.js";
 import { sendEmail, buildPasswordSetupEmail, buildAccountVerificationEmail } from "../services/email.js";
+import { generateUniqueReferralCode } from "./referral.js";
 
 //Ajustes dia 07/08/2026
 
@@ -50,10 +51,27 @@ async function processReferralCode(newUserId: number, referralCode?: string | nu
   if (!referralCode || !referralCode.trim()) return;
   try {
     const code = referralCode.trim().toUpperCase();
-    if (code === "KED10") {
-      await db.update(users).set({ referredBy: "KED10" }).where(eq(users.id, newUserId));
-      console.log(`[Referral] User ${newUserId} cadastrado via cupom promocional KED10.`);
-      return;
+
+    // Verificar se é um cupom promocional genérico
+    try {
+      const [promo] = await db
+        .select({ code: promoCoupons.code })
+        .from(promoCoupons)
+        .where(and(eq(promoCoupons.code, code), eq(promoCoupons.isActive, true)))
+        .limit(1);
+
+      if (promo) {
+        await db.update(users).set({ referredBy: code }).where(eq(users.id, newUserId));
+        console.log(`[Referral] User ${newUserId} cadastrado via cupom promocional ${code}.`);
+        return;
+      }
+    } catch {
+      // Fallback para códigos legados se necessário
+      if (code === "KED10") {
+        await db.update(users).set({ referredBy: "KED10" }).where(eq(users.id, newUserId));
+        console.log(`[Referral] User ${newUserId} cadastrado via cupom promocional KED10.`);
+        return;
+      }
     }
 
     const [referrer] = await db.select().from(users).where(eq(users.referralCode, code)).limit(1);
@@ -97,6 +115,7 @@ router.post("/register", async (req, res) => {
       name,
       isVerified: false,
       provider: "email",
+      referralCode: await generateUniqueReferralCode(),
       passwordResetToken: verificationToken,
       passwordResetExpires: expires,
     }).returning();
@@ -444,7 +463,8 @@ router.post("/firebase-google-login", async (req, res) => {
         name: name || email.split("@")[0],
         passwordHash: null,
         isVerified: true,
-        provider: provider || "google"
+        provider: provider || "google",
+        referralCode: await generateUniqueReferralCode(),
       }).returning();
       existingUser = newUser;
       await processReferralCode(newUser.id, refCode);
@@ -491,7 +511,8 @@ router.post("/firebase-social-login", async (req, res) => {
         name: name || email.split("@")[0],
         passwordHash: null,
         isVerified: true,
-        provider: provider || "social"
+        provider: provider || "social",
+        referralCode: await generateUniqueReferralCode(),
       }).returning();
       existingUser = newUser;
       await processReferralCode(newUser.id, refCode);

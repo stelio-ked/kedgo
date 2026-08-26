@@ -64,6 +64,17 @@ export const referralInvites = pgTable("referral_invites", {
   sentAt: timestamp("sent_at").defaultNow().notNull(),
 });
 
+// Cupons promocionais genéricos gerenciados pelo admin (ex: KED10)
+export const promoCoupons = pgTable("promo_coupons", {
+  id: serial("id").primaryKey(),
+  code: text("code").notNull().unique(),
+  description: text("description"),
+  discountCents: integer("discount_cents").default(1000).notNull(), // R$ 10,00 = 1000 centavos
+  isActive: boolean("is_active").default(true).notNull(),
+  usageCount: integer("usage_count").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const travelers = pgTable("travelers", {
   id: text("id").primaryKey(),
   itineraryId: integer("itinerary_id").references(() => itineraries.id, { onDelete: 'cascade' }).notNull(),
