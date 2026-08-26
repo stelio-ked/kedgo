@@ -12,7 +12,13 @@ import {
   CheckCircle,
   Activity as ActivityIcon,
   HelpCircle,
-  ExternalLink
+  ExternalLink,
+  MessageSquarePlus,
+  Crown,
+  Lightbulb,
+  Bug,
+  Heart,
+  Star
 } from "lucide-react";
 import { Traveler, Destination, CostItem } from "../types";
 import { jsPDF } from "jspdf";
@@ -31,13 +37,15 @@ interface AccessLog {
 interface SettingsTabProps {
   itineraryId: string | number;
   isTravelerMode?: boolean;
-  currentUser?: { email?: string; name?: string } | null;
+  currentUser?: { email?: string; name?: string; id?: number } | null;
   travelers?: Traveler[];
   destinations?: Destination[];
   costs?: CostItem[];
   ecoMode?: boolean;
   onToggleEcoMode?: () => void;
   isAdmin?: boolean;
+  onOpenFeedbackModal?: () => void;
+  onOpenSuperAdminOverview?: () => void;
 }
 
 export default function SettingsTab({ 
@@ -49,12 +57,16 @@ export default function SettingsTab({
   costs = [],
   ecoMode = false,
   onToggleEcoMode,
-  isAdmin: isAdminProp
+  isAdmin: isAdminProp,
+  onOpenFeedbackModal,
+  onOpenSuperAdminOverview
 }: SettingsTabProps) {
   const [logs, setLogs] = useState<AccessLog[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+
+  const isSuperAdmin = (currentUser?.email?.toLowerCase().trim() === "theoked25@gmail.com") || (currentUser?.id === 1);
 
   const userEmailNormalized = currentUser?.email?.toLowerCase().trim() || "";
   const currentUserTraveler = userEmailNormalized 
@@ -613,6 +625,88 @@ export default function SettingsTab({
           </div>
         </div>
 
+      </div>
+
+      {/* SUPER ADMIN OVERVIEW QUICK BANNER (EXCLUSIVO theoked25@gmail.com / ID=1) */}
+      {isSuperAdmin && onOpenSuperAdminOverview && (
+        <div className="bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 text-white rounded-3xl p-6 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="bg-black/20 text-amber-200 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full border border-white/10 flex items-center gap-1">
+                <Crown className="w-3 h-3 text-amber-300" /> Acesso Exclusivo
+              </span>
+              <span className="text-xs text-amber-100 font-bold">theoked25@gmail.com</span>
+            </div>
+            <h3 className="text-lg font-black tracking-tight">Painel Executivo &amp; Visão Geral do App</h3>
+            <p className="text-xs text-amber-100/90 max-w-xl">
+              Monitore todos os usuários cadastrados, volume de viagens criadas, gerencie cupons e responda a todos os feedbacks dos viajantes.
+            </p>
+          </div>
+          <button
+            onClick={onOpenSuperAdminOverview}
+            className="px-5 py-3 bg-white text-slate-900 hover:bg-amber-50 font-black rounded-2xl text-xs transition-all shadow-md cursor-pointer flex items-center justify-center gap-2 shrink-0 active:scale-98"
+          >
+            <Crown className="w-4 h-4 text-amber-600" />
+            <span>Abrir Visão Geral do App</span>
+          </button>
+        </div>
+      )}
+
+      {/* TRAVELER FEEDBACK CARD */}
+      <div className="bg-gradient-to-br from-white to-indigo-50/40 rounded-3xl border border-indigo-100 p-6 md:p-8 shadow-sm space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-start gap-3.5">
+            <div className="p-3 bg-indigo-600 text-white rounded-2xl shadow-md shrink-0">
+              <MessageSquarePlus className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-lg font-extrabold text-slate-900">
+                  Central de Feedback dos Viajantes
+                </h3>
+                <span className="text-[10px] bg-indigo-100 text-indigo-700 font-black px-2 py-0.5 rounded-full uppercase">
+                  Sua Opinião Vale Muito
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 mt-1 leading-relaxed max-w-2xl">
+                Tem uma sugestão de nova funcionalidade, encontrou algum erro ou tem dúvidas sobre como usar o KedGo!? Envie para nós! Toda resposta nos ajuda a construir a melhor experiência de viagem.
+              </p>
+            </div>
+          </div>
+
+          {onOpenFeedbackModal && (
+            <button
+              onClick={onOpenFeedbackModal}
+              className="px-5 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs rounded-2xl transition-all shadow-md cursor-pointer flex items-center justify-center gap-2 shrink-0 active:scale-98"
+            >
+              <MessageSquarePlus className="w-4 h-4" />
+              <span>Enviar Feedback ou Sugestão</span>
+            </button>
+          )}
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2">
+          <div className="bg-white/80 border border-slate-200/80 rounded-2xl p-3 text-center">
+            <span className="text-lg block mb-1">💡</span>
+            <span className="text-xs font-bold text-slate-800 block">Sugestões</span>
+            <span className="text-[10px] text-slate-500">Novas ideias</span>
+          </div>
+          <div className="bg-white/80 border border-slate-200/80 rounded-2xl p-3 text-center">
+            <span className="text-lg block mb-1">🐞</span>
+            <span className="text-xs font-bold text-slate-800 block">Erros / Bugs</span>
+            <span className="text-[10px] text-slate-500">Reporte falhas</span>
+          </div>
+          <div className="bg-white/80 border border-slate-200/80 rounded-2xl p-3 text-center">
+            <span className="text-lg block mb-1">❓</span>
+            <span className="text-xs font-bold text-slate-800 block">Dúvidas</span>
+            <span className="text-[10px] text-slate-500">Como usar</span>
+          </div>
+          <div className="bg-white/80 border border-slate-200/80 rounded-2xl p-3 text-center">
+            <span className="text-lg block mb-1">⭐</span>
+            <span className="text-xs font-bold text-slate-800 block">Elogios</span>
+            <span className="text-[10px] text-slate-500">Conte sua experiência</span>
+          </div>
+        </div>
       </div>
 
       {/* ECO MODE SECTION */}

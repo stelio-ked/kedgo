@@ -302,27 +302,70 @@ export function buildReferralInviteEmail(opts: {
               <p style="margin:0 0 20px;font-size:15px;color:#4a5568;line-height:1.6;">
                 Seu amigo <strong>${referrerName}</strong> usa o <strong>KedGo!</strong> para planejar roteiros, voos e custos de viagens e te convidou para fazer parte!
               </p>
-              <!-- Promo Box com explicação dos 2 produtos -->
+              <!-- Promo Box com explicação dos 3 planos de acesso -->
               <table cellpadding="0" cellspacing="0" width="100%" style="margin:0 0 28px;">
                 <tr>
                   <td style="background:#FFF7ED;border:1px solid #FDBA74;border-radius:12px;padding:20px;">
                     <p style="margin:0 0 14px;font-size:14px;color:#9A3412;font-weight:700;">
-                      🎁 Ao se cadastrar com o convite, você ganha <span style="color:#C2410C;font-weight:800;">R$ 10,00 de desconto</span> na escolha do seu produto:
+                      🎁 Ao se cadastrar com o convite, você ganha <span style="color:#C2410C;font-weight:800;">R$ 10,00 de desconto</span> em qualquer modalidade de acesso:
                     </p>
                     
+                    <!-- Plano 1: Passe Viagem -->
                     <div style="background:#ffffff;border-radius:8px;padding:12px 14px;margin-bottom:10px;border:1px solid #fed7aa;">
-                      <p style="margin:0;font-size:13px;color:#1E3A5F;font-weight:700;">🎫 Passe KedGo! (Avulso)</p>
-                      <p style="margin:4px 0 0;font-size:12px;color:#475569;line-height:1.45;">
-                        Acesso total aos recursos inteligentes de IA, organização de voos, documentos e rateio financeiro para <strong>1 viagem específica</strong>. Ideal para quem viaja pontualmente.
-                      </p>
+                      <table width="100%" cellpadding="0" cellspacing="0">
+                        <tr>
+                          <td>
+                            <p style="margin:0;font-size:13px;color:#1E3A5F;font-weight:700;">🎟️ Passe Viagem</p>
+                            <p style="margin:3px 0 0;font-size:12px;color:#475569;line-height:1.45;">
+                              Acesso completo aos recursos para <strong>1 viagem específica (+30 dias)</strong>. Ideal para viagens pontuais.
+                            </p>
+                          </td>
+                          <td align="right" style="vertical-align:top;padding-left:10px;">
+                            <span style="font-size:12px;font-weight:800;color:#D95D39;white-space:nowrap;">R$ 19,90</span>
+                            <span style="display:block;font-size:10px;color:#94a3b8;text-decoration:line-through;">R$ 29,90</span>
+                          </td>
+                        </tr>
+                      </table>
                     </div>
 
-                    <div style="background:#ffffff;border-radius:8px;padding:12px 14px;border:1px solid #fed7aa;">
-                      <p style="margin:0;font-size:13px;color:#1E3A5F;font-weight:700;">⭐ KedGo! Pro (Vitalício)</p>
-                      <p style="margin:4px 0 0;font-size:12px;color:#475569;line-height:1.45;">
-                        Acesso <strong>vitalício e ilimitado</strong> para criar quantas viagens quiser, IA sem restrições, exportação em PDF e novas atualizações. Perfeito para quem viaja sempre.
-                      </p>
+                    <!-- Plano 2: KedGo Pro Anual -->
+                    <div style="background:#ffffff;border-radius:8px;padding:12px 14px;margin-bottom:10px;border:2px solid #10b981;position:relative;">
+                      <table width="100%" cellpadding="0" cellspacing="0">
+                        <tr>
+                          <td>
+                            <span style="display:inline-block;background:#10b981;color:#ffffff;font-size:9px;font-weight:800;padding:2px 6px;border-radius:4px;text-transform:uppercase;margin-bottom:4px;">🔥 Mais Popular</span>
+                            <p style="margin:0;font-size:13px;color:#1E3A5F;font-weight:700;">✨ KedGo Pro Anual</p>
+                            <p style="margin:3px 0 0;font-size:12px;color:#475569;line-height:1.45;">
+                              <strong>Viagens &amp; OCR ilimitados (1 ano)</strong>, roteiros com IA, cofre criptografado offline e rateio em grupo.
+                            </p>
+                          </td>
+                          <td align="right" style="vertical-align:top;padding-left:10px;">
+                            <span style="font-size:12px;font-weight:800;color:#10b981;white-space:nowrap;">R$ 69,90/ano</span>
+                            <span style="display:block;font-size:10px;color:#94a3b8;text-decoration:line-through;">R$ 79,90</span>
+                          </td>
+                        </tr>
+                      </table>
                     </div>
+
+                    <!-- Plano 3: Founders Pass -->
+                    <div style="background:#ffffff;border-radius:8px;padding:12px 14px;border:1px solid #fed7aa;">
+                      <table width="100%" cellpadding="0" cellspacing="0">
+                        <tr>
+                          <td>
+                            <span style="display:inline-block;background:#f59e0b;color:#ffffff;font-size:9px;font-weight:800;padding:2px 6px;border-radius:4px;text-transform:uppercase;margin-bottom:4px;">👑 Fundadores</span>
+                            <p style="margin:0;font-size:13px;color:#1E3A5F;font-weight:700;">👑 Founders Pass (Vitalício)</p>
+                            <p style="margin:3px 0 0;font-size:12px;color:#475569;line-height:1.45;">
+                              Acesso <strong>vitalício e irrestrito</strong> a todas as funções atuais e futuras sem mensalidades ou renovação.
+                            </p>
+                          </td>
+                          <td align="right" style="vertical-align:top;padding-left:10px;">
+                            <span style="font-size:12px;font-weight:800;color:#D95D39;white-space:nowrap;">R$ 139,90</span>
+                            <span style="display:block;font-size:10px;color:#94a3b8;text-decoration:line-through;">R$ 149,90</span>
+                          </td>
+                        </tr>
+                      </table>
+                    </div>
+
                   </td>
                 </tr>
               </table>
@@ -368,7 +411,7 @@ export function buildReferralInviteEmail(opts: {
 </html>
   `.trim();
 
-  const text = `Olá!\n\nSeu amigo ${referrerName} te convidou para usar o KedGo!\n\nAo se cadastrar, você ganha R$ 10,00 de desconto na escolha do seu produto:\n- Passe KedGo! (Avulso - 1 viagem): Recursos completos para 1 viagem específica.\n- KedGo! Pro (Vitalício): Acesso vitalício e ilimitado para todas as suas viagens.\n\nCrie sua conta pelo link: ${inviteUrl}\nOu use o código de convite: ${referralCode}\n\nKedGo!`;
+  const text = `Olá!\n\nSeu amigo ${referrerName} te convidou para usar o KedGo!\n\nAo se cadastrar, você ganha R$ 10,00 de desconto na escolha do seu plano:\n- 🎟️ Passe Viagem (1 viagem +30 dias): R$ 19,90 (de R$ 29,90)\n- ✨ KedGo Pro Anual (Viagens & OCR ilimitados): R$ 69,90/ano (de R$ 79,90)\n- 👑 Founders Pass (Acesso Vitalício sem renovação): R$ 139,90 único (de R$ 149,90)\n\nCrie sua conta pelo link: ${inviteUrl}\nOu use o código de convite: ${referralCode}\n\nKedGo!`;
 
   return { to: inviteeEmail, subject: title, html, text };
 }

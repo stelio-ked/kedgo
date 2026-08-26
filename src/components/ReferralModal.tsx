@@ -258,17 +258,32 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
               <div className="flex items-start gap-2 text-xs font-semibold">
                 <Sparkles className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                 <div>
-                  <strong>Todos saem ganhando!</strong> Seus amigos ganham <span className="text-amber-700 font-extrabold">R$ 10,00 de desconto</span> no cadastro:
+                  <strong>Todos saem ganhando!</strong> Seus amigos ganham <span className="text-amber-700 font-extrabold">R$ 10,00 de desconto</span> em qualquer plano:
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
-                <div className="bg-white/80 border border-amber-200 rounded-xl p-2.5">
-                  <span className="font-extrabold text-slate-800 block">🎫 Passe KedGo!</span>
-                  <span className="text-slate-600 text-[10px]">Acesso total para 1 viagem específica.</span>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px]">
+                <div className="bg-white/80 border border-amber-200 rounded-xl p-2.5 flex flex-col justify-between">
+                  <div>
+                    <span className="font-extrabold text-slate-800 block">🎟️ Passe Viagem</span>
+                    <span className="text-slate-600 text-[10px]">1 viagem específica (+30 dias).</span>
+                  </div>
+                  <span className="text-amber-800 font-extrabold text-[10px] mt-1">R$ 19,90 <span className="line-through text-slate-400 font-normal">R$ 29,90</span></span>
                 </div>
-                <div className="bg-white/80 border border-amber-200 rounded-xl p-2.5">
-                  <span className="font-extrabold text-slate-800 block">⭐ KedGo! Pro</span>
-                  <span className="text-slate-600 text-[10px]">Acesso vitalício e ilimitado a todas as viagens.</span>
+                <div className="bg-emerald-50/90 border border-emerald-300 rounded-xl p-2.5 flex flex-col justify-between">
+                  <div>
+                    <span className="text-[9px] bg-emerald-600 text-white font-extrabold px-1.5 py-0.2 rounded-md uppercase tracking-wider inline-block mb-0.5">Mais Popular</span>
+                    <span className="font-extrabold text-slate-900 block">✨ KedGo Pro Anual</span>
+                    <span className="text-slate-600 text-[10px]">Viagens &amp; OCR ilimitados (1 ano).</span>
+                  </div>
+                  <span className="text-emerald-700 font-extrabold text-[10px] mt-1">R$ 69,90 <span className="line-through text-slate-400 font-normal">R$ 79,90</span></span>
+                </div>
+                <div className="bg-white/80 border border-amber-200 rounded-xl p-2.5 flex flex-col justify-between">
+                  <div>
+                    <span className="text-[9px] bg-amber-500 text-white font-extrabold px-1.5 py-0.2 rounded-md uppercase tracking-wider inline-block mb-0.5">Fundadores</span>
+                    <span className="font-extrabold text-slate-800 block">👑 Founders Pass</span>
+                    <span className="text-slate-600 text-[10px]">Acesso vitalício sem renovação.</span>
+                  </div>
+                  <span className="text-amber-800 font-extrabold text-[10px] mt-1">R$ 139,90 <span className="line-through text-slate-400 font-normal">R$ 149,90</span></span>
                 </div>
               </div>
             </div>

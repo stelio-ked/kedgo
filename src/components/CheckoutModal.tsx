@@ -300,7 +300,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                         {isDiscountApplied ? (
                           <>
                             <span className="text-[11px] font-semibold line-through text-slate-400">R$ 29,90</span>
-                            <span>R$ {(29.90 - (isCouponKed10 ? 2.99 : 10.00)).toFixed(2)}</span>
+                            <span>R$ {(29.90 - discountValue).toFixed(2)}</span>
                           </>
                         ) : (
                           <span>R$ 29,90</span>
@@ -331,7 +331,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                         <span>KedGo Pro Anual</span>
                       </div>
                       <div className="text-[11px] font-semibold text-slate-600 mt-1 leading-snug">
-                        Viagens & OCR Ilimitados (1 ano)
+                        Viagens &amp; OCR Ilimitados (1 ano)
                       </div>
                     </div>
 
@@ -340,7 +340,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                         {isDiscountApplied ? (
                           <>
                             <span className="text-[11px] font-semibold line-through text-slate-400">R$ 79,90</span>
-                            <span>R$ {(79.90 - (isCouponKed10 ? 7.99 : 10.00)).toFixed(2)}</span>
+                            <span>R$ {(79.90 - discountValue).toFixed(2)}</span>
                           </>
                         ) : (
                           <span>R$ 79,90</span>
@@ -381,7 +381,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                         {isDiscountApplied ? (
                           <>
                             <span className="text-[11px] font-semibold line-through text-slate-400">R$ 149,90</span>
-                            <span>R$ {(149.90 - (isCouponKed10 ? 14.99 : 10.00)).toFixed(2)}</span>
+                            <span>R$ {(149.90 - discountValue).toFixed(2)}</span>
                           </>
                         ) : (
                           <span>R$ 149,90</span>

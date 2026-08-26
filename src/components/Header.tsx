@@ -21,7 +21,9 @@ import {
   Star,
   Gift,
   Sparkles,
-  Key
+  Key,
+  Crown,
+  MessageSquarePlus
 } from "lucide-react";
 import { Traveler, NotificationAlert } from "../types";
 import { motion, AnimatePresence } from "motion/react";
@@ -55,11 +57,13 @@ interface HeaderProps {
   favoriteItineraryId?: string | number | null;
   onSetFavoriteItinerary?: (id: string | number) => void;
   isTravelerMode?: boolean;
-  currentUser?: { name?: string; email?: string } | null;
+  currentUser?: { name?: string; email?: string; id?: number } | null;
   unreadChatCount?: number;
   onOpenChatTab?: () => void;
   onOpenReferralModal?: () => void;
   onOpenCheckoutModal?: () => void;
+  onOpenFeedbackModal?: () => void;
+  onOpenSuperAdminOverview?: () => void;
   canCreateItinerary?: boolean;
 }
 
@@ -93,8 +97,11 @@ export default function Header({
   onOpenChatTab,
   onOpenReferralModal,
   onOpenCheckoutModal,
+  onOpenFeedbackModal,
+  onOpenSuperAdminOverview,
   canCreateItinerary = true,
 }: HeaderProps) {
+  const isSuperAdmin = (currentUser?.email?.toLowerCase().trim() === "theoked25@gmail.com") || ((currentUser as any)?.id === 1);
   const [showTravelersModal, setShowTravelersModal] = useState(false);
   const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
@@ -613,6 +620,23 @@ export default function Header({
                     
                     {/* Fast Quick Links */}
                     <div className="p-2 border-b border-slate-100 space-y-1">
+                      {/* Super Admin Exclusive Overview Button */}
+                      {isSuperAdmin && onOpenSuperAdminOverview && (
+                        <button
+                          onClick={() => {
+                            setShowSettingsDropdown(false);
+                            onOpenSuperAdminOverview();
+                          }}
+                          className="w-full py-2 px-3 bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 text-white rounded-xl font-extrabold flex items-center justify-between text-xs cursor-pointer hover:opacity-95 shadow-2xs"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Crown className="w-4 h-4 text-amber-200" />
+                            <span>Visão Geral do App</span>
+                          </div>
+                          <span className="text-[10px] bg-black/25 px-2 py-0.5 rounded-full font-bold">SUPER ADM</span>
+                        </button>
+                      )}
+
                       {onOpenCheckoutModal && (
                         <button
                           onClick={() => {
@@ -638,7 +662,20 @@ export default function Header({
                           className="w-full flex items-center gap-2.5 p-2 rounded-xl text-amber-900 bg-amber-50/80 hover:bg-amber-100/80 font-bold transition-colors cursor-pointer"
                         >
                           <Gift className="w-4 h-4 text-amber-600" />
-                          <span>Indique & Ganhe (Pro Grátis)</span>
+                          <span>Indique &amp; Ganhe (Pro Grátis)</span>
+                        </button>
+                      )}
+
+                      {onOpenFeedbackModal && (
+                        <button
+                          onClick={() => {
+                            setShowSettingsDropdown(false);
+                            onOpenFeedbackModal();
+                          }}
+                          className="w-full flex items-center gap-2.5 p-2 rounded-xl text-indigo-900 bg-indigo-50/80 hover:bg-indigo-100/80 font-bold transition-colors cursor-pointer"
+                        >
+                          <MessageSquarePlus className="w-4 h-4 text-indigo-600" />
+                          <span>Feedback dos Viajantes</span>
                         </button>
                       )}
 
@@ -651,7 +688,7 @@ export default function Header({
                       >
                         <div className="flex items-center gap-2">
                           <Users className="w-4 h-4 text-slate-500" />
-                          <span>Membros & Viajantes</span>
+                          <span>Membros &amp; Viajantes</span>
                         </div>
                         <span className="bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded-full text-[10px]">
                           {travelers.length}

@@ -75,6 +75,22 @@ export const promoCoupons = pgTable("promo_coupons", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Feedbacks, sugestões, dúvidas e reporte de erros dos viajantes
+export const feedbacks = pgTable("feedbacks", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id, { onDelete: 'set null' }),
+  userName: text("user_name"),
+  userEmail: text("user_email").notNull(),
+  type: text("type").default("suggestion").notNull(), // 'suggestion' | 'bug' | 'question' | 'praise' | 'other'
+  subject: text("subject").notNull(),
+  message: text("message").notNull(),
+  rating: integer("rating"), // 1 a 5 estrelas
+  itineraryId: integer("itinerary_id").references(() => itineraries.id, { onDelete: 'set null' }),
+  status: text("status").default("pending").notNull(), // 'pending' | 'analyzing' | 'resolved'
+  adminNotes: text("admin_notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const travelers = pgTable("travelers", {
   id: text("id").primaryKey(),
   itineraryId: integer("itinerary_id").references(() => itineraries.id, { onDelete: 'cascade' }).notNull(),

@@ -239,22 +239,136 @@ router.post("/coupons", authMiddleware, async (req: AuthRequest, res) => {
   }
 });
 
-router.put("/coupons/:id/toggle", authMiddleware, async (req: AuthRequest, res) => {
+// ─── Super Admin Helper ──────────────────────────────────────────────────────
+function isSuperAdmin(user?: { id?: number; email?: string } | null): boolean {
+  if (!user) return false;
+  const email = (user.email || "").toLowerCase().trim();
+  return user.id === 1 || email === "theoked25@gmail.com";
+}
+
+// ─── GET /api/admin/overview (Visão Geral do App — Exclusivo Super Admin) ────
+router.get("/overview", authMiddleware, async (req: AuthRequest, res) => {
   if (!db) return res.status(503).json({ error: "Banco de dados indisponível." });
+
+  if (!isSuperAdmin(req.user)) {
+    return res.status(403).json({ error: "Acesso restrito ao Administrador Geral (theoked25@gmail.com)." });
+  }
+
   try {
-    const couponId = Number(req.params.id);
-    const [coupon] = await db.select().from(promoCoupons).where(eq(promoCoupons.id, couponId)).limit(1);
-    if (!coupon) return res.status(404).json({ error: "Cupom não encontrado." });
+    const { feedbacks, foundersQuota } = await import("../db/schema.js");
+
+    // 1. Estatísticas Gerais
+    const allUsers = await db.select().from(users).orderBy(sql`${users.createdAt} DESC`);
+    const allItineraries = await db.select().from(itineraries).orderBy(sql`${itineraries.createdAt} DESC`);
+    const allFeedbacks = await db.select().from(feedbacks).orderBy(sql`${feedbacks.createdAt} DESC`);
+    const allCoupons = await db.select().from(promoCoupons).orderBy(sql`${promoCoupons.createdAt} DESC`);
+    const allTravelers = await db.select().from(travelers);
+    const [founders] = await db.select().from(foundersQuota).limit(1);
+
+    const proUsersCount = allUsers.filter(u => u.isLifetimePro || u.isAnnualPro || u.planType === 'founders_lifetime' || u.planType === 'pro_lifetime').length;
+    const pendingFeedbacksCount = allFeedbacks.filter(f => f.status === 'pending').length;
+
+    // Contagem de viagens por usuário
+    const userItineraryCounts: Record<number, number> = {};
+    for (const it of allItineraries) {
+      userItineraryCounts[it.ownerId] = (userItineraryCounts[it.ownerId] || 0) + 1;
+    }
+
+    const usersFormatted = allUsers.map(u => ({
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      planType: u.planType || "starter",
+      isLifetimePro: u.isLifetimePro,
+      isAnnualPro: u.isAnnualPro,
+      referralCode: u.referralCode,
+      referralCount: u.referralCount || 0,
+      referredBy: u.referredBy,
+      createdAt: u.createdAt,
+      itinerariesCount: userItineraryCounts[u.id] || 0,
+      isSuperAdmin: u.id === 1 || u.email.toLowerCase() === "theoked25@gmail.com",
+    }));
+
+    res.json({
+      success: true,
+      stats: {
+        totalUsers: allUsers.length,
+        totalItineraries: allItineraries.length,
+        totalTravelers: allTravelers.length,
+        totalFeedbacks: allFeedbacks.length,
+        pendingFeedbacks: pendingFeedbacksCount,
+        totalCoupons: allCoupons.length,
+        proUsersCount,
+        foundersSold: founders?.soldUnits || 38,
+        foundersLimit: founders?.totalLimit || 200,
+      },
+      users: usersFormatted,
+      feedbacks: allFeedbacks,
+      coupons: allCoupons,
+      recentItineraries: allItineraries.slice(0, 20),
+    });
+  } catch (err: any) {
+    console.error("[Super Admin Overview Error]", err.message);
+    res.status(500).json({ error: "Erro ao carregar visão geral do app: " + err.message });
+  }
+});
+
+// ─── PUT /api/admin/feedbacks/:id ────────────────────────────────────────────
+// Atualiza o status e anotações do feedback pelo Super Admin
+router.put("/feedbacks/:id", authMiddleware, async (req: AuthRequest, res) => {
+  if (!db) return res.status(503).json({ error: "Banco de dados indisponível." });
+
+  if (!isSuperAdmin(req.user)) {
+    return res.status(403).json({ error: "Acesso restrito ao Administrador Geral." });
+  }
+
+  try {
+    const feedbackId = Number(req.params.id);
+    const { status, adminNotes } = req.body;
+
+    const { feedbacks } = await import("../db/schema.js");
+
+    const updates: Record<string, any> = {};
+    if (status && ["pending", "analyzing", "resolved"].includes(status)) {
+      updates.status = status;
+    }
+    if (adminNotes !== undefined) {
+      updates.adminNotes = adminNotes;
+    }
 
     const [updated] = await db
-      .update(promoCoupons)
-      .set({ isActive: !coupon.isActive })
-      .where(eq(promoCoupons.id, couponId))
+      .update(feedbacks)
+      .set(updates)
+      .where(eq(feedbacks.id, feedbackId))
       .returning();
 
-    res.json({ success: true, coupon: updated });
+    if (!updated) {
+      return res.status(404).json({ error: "Feedback não encontrado." });
+    }
+
+    res.json({ success: true, feedback: updated });
   } catch (err: any) {
-    res.status(500).json({ error: "Erro ao alternar status do cupom: " + err.message });
+    console.error("[Update Feedback Error]", err.message);
+    res.status(500).json({ error: "Erro ao atualizar feedback: " + err.message });
+  }
+});
+
+// ─── DELETE /api/admin/feedbacks/:id ─────────────────────────────────────────
+router.delete("/feedbacks/:id", authMiddleware, async (req: AuthRequest, res) => {
+  if (!db) return res.status(503).json({ error: "Banco de dados indisponível." });
+
+  if (!isSuperAdmin(req.user)) {
+    return res.status(403).json({ error: "Acesso restrito ao Administrador Geral." });
+  }
+
+  try {
+    const feedbackId = Number(req.params.id);
+    const { feedbacks } = await import("../db/schema.js");
+
+    await db.delete(feedbacks).where(eq(feedbacks.id, feedbackId));
+    res.json({ success: true, message: "Feedback removido com sucesso." });
+  } catch (err: any) {
+    res.status(500).json({ error: "Erro ao remover feedback: " + err.message });
   }
 });
 

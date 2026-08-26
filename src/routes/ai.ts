@@ -12,7 +12,62 @@ import { inferActivityType } from "../utils.js";
 
 const router = Router();
 
+function buildFallbackQuestions(hasOrigin = false, hasDates = false) {
+  const questions = [];
+  if (!hasOrigin) {
+    questions.push({
+      id: "origin_departure",
+      category: "Origem e Ponto de Partida",
+      question: "De qual cidade você irá partir (origem) e já tem aeroporto ou meio de preferência?",
+      options: ["São Paulo (GRU / CGH)", "Rio de Janeiro (GIG / SDU)", "Belo Horizonte / Brasília", "Lisboa / Porto (Portugal)", "Outra cidade / Sem voo"],
+      placeholder: "Ex: Saindo de São Paulo (Guarulhos)..."
+    });
+  }
+  if (!hasDates) {
+    questions.push({
+      id: "duration_dates",
+      category: "Datas e Duração Exata",
+      question: "Quantos dias exatos durará a viagem e qual a data ou mês de partida?",
+      options: ["15 dias (Roteiro Completo)", "10 dias", "7 dias (1 Semana)", "5 dias", "20 dias ou mais"],
+      placeholder: "Ex: 15 dias a partir de 01 de Outubro de 2026..."
+    });
+  }
+  questions.push(
+    {
+      id: "destination_transport",
+      category: "Destinos e Deslocamento",
+      question: "Quais cidades/regiões você deseja conhecer e como prefere se deslocar?",
+      options: ["Trens de alta velocidade (Frecciarossa/Italo/TGV)", "Carro alugado (Road trip cênica)", "Voos internos quando necessário", "Mistura de trem e transfer privativo", "Transporte público e a pé"],
+      placeholder: "Ex: Trens de alta velocidade entre grandes cidades..."
+    },
+    {
+      id: "group_profile",
+      category: "Perfil do Grupo",
+      question: "Quantas pessoas irão viajar e qual o perfil do grupo?",
+      options: ["Casal (Romântico / Lua de Mel)", "Casal entusiasta de fotografia e cenários instagramáveis", "Família com crianças", "Grupo de Amigos", "Solo / Viajante Individual"],
+      placeholder: "Ex: Casal entusiasta de fotografia..."
+    },
+    {
+      id: "budget_pace",
+      category: "Orçamento e Estilo de Viagem",
+      question: "Qual a faixa de orçamento e o ritmo desejado para os dias?",
+      options: ["Moderado (Hotéis 4*, boa localização, alguns jantares especiais)", "Econômico (Hotéis 3* bem localizados, transporte público)", "Luxo & Exclusivo (Hotéis 5*, transfers privados)", "Moderado (Ritmo Intenso - Ver o máximo)"],
+      placeholder: "Ex: Moderado, ritmo equilibrado..."
+    },
+    {
+      id: "interests_mustsee",
+      category: "Interesses e Experiências",
+      question: "Quais são os pilares prioritários da viagem e há atrações obrigatórias?",
+      options: ["Museus e história clássica (Vaticano, Coliseu, Uffizi)", "Alta gastronomia e degustação de vinhos locais", "Cenários fotográficos, mirantes e natureza", "Compras, moda e vida urbana", "Um pouco de tudo (Cultura, boa comida e romance)"],
+      placeholder: "Ex: Museus clássicos, gastronomia e belas fotos..."
+    }
+  );
+  return questions;
+}
+
 router.post("/evaluate-prompt", authMiddleware, geminiQuotaMiddleware, async (req: AuthRequest, res) => {
+  let hasOrigin = false;
+  let hasDates = false;
   try {
     const { prompt, originCity, startDate, durationDays } = req.body;
     if (!prompt || typeof prompt !== "string" || !prompt.trim()) {
@@ -21,67 +76,14 @@ router.post("/evaluate-prompt", authMiddleware, geminiQuotaMiddleware, async (re
 
     const userApiKey = (req.headers["x-gemini-api-key"] as string)?.trim() || process.env.GEMINI_API_KEY;
 
-    const hasOrigin = Boolean(originCity && String(originCity).trim());
-    const hasDates = Boolean((startDate && String(startDate).trim()) || (durationDays && Number(durationDays) > 0));
-
-    const buildFallbackQuestions = () => {
-      const questions = [];
-      if (!hasOrigin) {
-        questions.push({
-          id: "origin_departure",
-          category: "Origem e Ponto de Partida",
-          question: "De qual cidade você irá partir (origem) e já tem aeroporto ou meio de preferência?",
-          options: ["São Paulo (GRU / CGH)", "Rio de Janeiro (GIG / SDU)", "Belo Horizonte / Brasília", "Lisboa / Porto (Portugal)", "Outra cidade / Sem voo"],
-          placeholder: "Ex: Saindo de São Paulo (Guarulhos)..."
-        });
-      }
-      if (!hasDates) {
-        questions.push({
-          id: "duration_dates",
-          category: "Datas e Duração Exata",
-          question: "Quantos dias exatos durará a viagem e qual a data ou mês de partida?",
-          options: ["15 dias (Roteiro Completo)", "10 dias", "7 dias (1 Semana)", "5 dias", "20 dias ou mais"],
-          placeholder: "Ex: 15 dias a partir de 01 de Outubro de 2026..."
-        });
-      }
-      questions.push(
-        {
-          id: "destination_transport",
-          category: "Destinos e Deslocamento",
-          question: "Quais cidades/regiões você deseja conhecer e como prefere se deslocar?",
-          options: ["Trens de alta velocidade (Frecciarossa/Italo/TGV)", "Carro alugado (Road trip cênica)", "Voos internos quando necessário", "Mistura de trem e transfer privativo", "Transporte público e a pé"],
-          placeholder: "Ex: Trens de alta velocidade entre grandes cidades..."
-        },
-        {
-          id: "group_profile",
-          category: "Perfil do Grupo",
-          question: "Quantas pessoas irão viajar e qual o perfil do grupo?",
-          options: ["Casal (Romântico / Lua de Mel)", "Casal entusiasta de fotografia e cenários instagramáveis", "Família com crianças", "Grupo de Amigos", "Solo / Viajante Individual"],
-          placeholder: "Ex: Casal entusiasta de fotografia..."
-        },
-        {
-          id: "budget_pace",
-          category: "Orçamento e Estilo de Viagem",
-          question: "Qual a faixa de orçamento e o ritmo desejado para os dias?",
-          options: ["Moderado (Hotéis 4*, boa localização, alguns jantares especiais)", "Econômico (Hotéis 3* bem localizados, transporte público)", "Luxo & Exclusivo (Hotéis 5*, transfers privados)", "Moderado (Ritmo Intenso - Ver o máximo)"],
-          placeholder: "Ex: Moderado, ritmo equilibrado..."
-        },
-        {
-          id: "interests_mustsee",
-          category: "Interesses e Experiências",
-          question: "Quais são os pilares prioritários da viagem e há atrações obrigatórias?",
-          options: ["Museus e história clássica (Vaticano, Coliseu, Uffizi)", "Alta gastronomia e degustação de vinhos locais", "Cenários fotográficos, mirantes e natureza", "Compras, moda e vida urbana", "Um pouco de tudo (Cultura, boa comida e romance)"],
-          placeholder: "Ex: Museus clássicos, gastronomia e belas fotos..."
-        }
-      );
-      return questions;
-    };
+    hasOrigin = Boolean(originCity && String(originCity).trim());
+    hasDates = Boolean((startDate && String(startDate).trim()) || (durationDays && Number(durationDays) > 0));
 
     if (!userApiKey) {
       return res.json({
         isSpecific: false,
         reason: "Olá! Sou a KedIA, sua Arquiteta de Itinerários. Para calibrarmos perfeitamente a logística e o estilo da sua viagem, responda aos pontos rápidos abaixo:",
-        suggestedQuestions: buildFallbackQuestions()
+        suggestedQuestions: buildFallbackQuestions(hasOrigin, hasDates)
       });
     }
 

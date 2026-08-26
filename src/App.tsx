@@ -14,7 +14,9 @@ import {
   MessageCircle,
   Settings,
   ShieldCheck,
-  Key
+  Key,
+  Crown,
+  X
 } from "lucide-react";
 import { 
   Traveler, 
@@ -58,6 +60,8 @@ import PWAInstallBanner from "./components/PWAInstallBanner";
 import ReferralModal from "./components/ReferralModal";
 import CheckoutModal from "./components/CheckoutModal";
 import KedIAGuideModal from "./components/KedIAGuideModal";
+import FeedbackModal from "./components/FeedbackModal";
+import SuperAdminOverview from "./components/SuperAdminOverview";
 import { usePlanAccess } from "./hooks/usePlanAccess";
 import { getAiHeaders } from "./utils/geminiClient";
 import TrialBanner from "./components/TrialBanner";
@@ -189,6 +193,8 @@ export default function App() {
   const [showReferralModal, setShowReferralModal] = useState(false);
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [showKedIAGuideModal, setShowKedIAGuideModal] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [showSuperAdminModal, setShowSuperAdminModal] = useState(false);
   const [userPlan, setUserPlan] = useState<PlanType>('starter');
   const [showTrialExpiredModal, setShowTrialExpiredModal] = useState(false);
   const [blockedFeatureName, setBlockedFeatureName] = useState("esta funcionalidade");
@@ -2778,6 +2784,8 @@ export default function App() {
         onOpenChatTab={() => setActiveTab("chat")}
         onOpenReferralModal={() => setShowReferralModal(true)}
         onOpenCheckoutModal={() => setShowCheckoutModal(true)}
+        onOpenFeedbackModal={() => setShowFeedbackModal(true)}
+        onOpenSuperAdminOverview={() => setShowSuperAdminModal(true)}
         canCreateItinerary={planAccess.canCreateItinerary}
       />
 
@@ -3145,6 +3153,8 @@ export default function App() {
               travelers={activeTravelers}
               destinations={activeDestinations}
               costs={activeCosts}
+              onOpenFeedbackModal={() => setShowFeedbackModal(true)}
+              onOpenSuperAdminOverview={() => setShowSuperAdminModal(true)}
               ecoMode={itineraries.find(it => it.id === activeItineraryId)?.ecoMode || false}
               onToggleEcoMode={async () => {
                 const currentEco = itineraries.find(it => it.id === activeItineraryId)?.ecoMode || false;
@@ -3375,6 +3385,59 @@ export default function App() {
         onOpenCheckout={() => setShowCheckoutModal(true)}
         featureName={blockedFeatureName}
       />
+
+      <FeedbackModal
+        isOpen={showFeedbackModal}
+        onClose={() => setShowFeedbackModal(false)}
+        currentUser={currentUser}
+        itineraryId={activeItineraryId}
+        token={token}
+      />
+
+      {/* SUPER ADMIN OVERVIEW FULLSCREEN MODAL */}
+      <AnimatePresence>
+        {showSuperAdminModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 overflow-y-auto"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="bg-slate-100 rounded-3xl w-full max-w-6xl shadow-2xl border border-slate-200 overflow-hidden max-h-[94vh] flex flex-col"
+            >
+              <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-2">
+                  <span className="p-1.5 bg-amber-500/20 text-amber-400 rounded-xl border border-amber-400/30">
+                    <Crown className="w-5 h-5" />
+                  </span>
+                  <div>
+                    <h2 className="text-sm font-black tracking-wide">Painel Super Admin — KedGo!</h2>
+                    <p className="text-[10px] text-slate-400">Exclusivo para theoked25@gmail.com</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowSuperAdminModal(false)}
+                  className="p-2 text-slate-400 hover:text-white bg-white/10 hover:bg-white/20 rounded-full transition cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-4 sm:p-6 overflow-y-auto flex-1">
+                <SuperAdminOverview
+                  token={token}
+                  currentUser={currentUser}
+                  onClose={() => setShowSuperAdminModal(false)}
+                />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
     </div>
   );

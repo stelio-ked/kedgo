@@ -1,6 +1,6 @@
 import { Router } from "express";
 import crypto from "crypto";
-import { eq, and, sql, isNull } from "drizzle-orm";
+import { eq, and, or, sql, isNull } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { users, referrals, referralInvites, promoCoupons } from "../db/schema.js";
 import { authMiddleware, AuthRequest } from "../middleware/auth.js";

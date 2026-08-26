@@ -17,6 +17,7 @@ import adminRouter from "./src/routes/admin.js";
 import referralRouter from "./src/routes/referral.js";
 import planAccessRouter from "./src/routes/planAccess.js";
 import stripeRouter from "./src/routes/stripe.js";
+import feedbacksRouter from "./src/routes/feedbacks.js";
 
 async function startServer() {
   if (pool) {
@@ -64,6 +65,31 @@ async function startServer() {
           referral_code TEXT NOT NULL,
           sent_at TIMESTAMP DEFAULT NOW() NOT NULL,
           UNIQUE(referrer_id, invitee_email)
+        );
+
+        CREATE TABLE IF NOT EXISTS promo_coupons (
+          id SERIAL PRIMARY KEY,
+          code TEXT NOT NULL UNIQUE,
+          description TEXT,
+          discount_cents INTEGER NOT NULL DEFAULT 1000,
+          is_active BOOLEAN NOT NULL DEFAULT TRUE,
+          usage_count INTEGER NOT NULL DEFAULT 0,
+          created_at TIMESTAMP NOT NULL DEFAULT NOW()
+        );
+
+        CREATE TABLE IF NOT EXISTS feedbacks (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+          user_name TEXT,
+          user_email TEXT NOT NULL,
+          type TEXT NOT NULL DEFAULT 'suggestion',
+          subject TEXT NOT NULL,
+          message TEXT NOT NULL,
+          rating INTEGER,
+          itinerary_id INTEGER REFERENCES itineraries(id) ON DELETE SET NULL,
+          status TEXT NOT NULL DEFAULT 'pending',
+          admin_notes TEXT,
+          created_at TIMESTAMP NOT NULL DEFAULT NOW()
         );
 
         CREATE TABLE IF NOT EXISTS ai_prompt_logs (
@@ -163,6 +189,7 @@ async function startServer() {
   app.use("/api/referral", referralRouter);
   app.use("/api/plan", planAccessRouter);
   app.use("/api/stripe", stripeRouter);
+  app.use("/api/feedbacks", feedbacksRouter);
 
   // Servir arquivos de uploads locais
   app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
