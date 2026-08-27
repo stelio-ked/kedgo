@@ -7,3 +7,4 @@ coverage/
 !.env.example
 uploads/
 firebase-applet-config.json
+docs/roteiro-marketing-kedgo.md
