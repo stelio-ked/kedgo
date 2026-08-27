@@ -3,13 +3,14 @@ import { eq, desc, and, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { feedbacks, users } from "../db/schema.js";
 import { authMiddleware, AuthRequest } from "../middleware/auth.js";
+import { emailLimiter } from "../middleware/rateLimit.js";
 import { sendEmail, buildAdminFeedbackNotificationEmail } from "../services/email.js";
 
 const router = Router();
 
 // ─── POST /api/feedbacks ─────────────────────────────────────────────────────
 // Envia um novo feedback (viajante autenticado ou convidado)
-router.post("/", async (req: any, res) => {
+router.post("/", emailLimiter, async (req: any, res) => {
   if (!db) return res.status(503).json({ error: "Banco de dados indisponível." });
 
   try {

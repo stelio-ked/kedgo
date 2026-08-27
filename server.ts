@@ -183,7 +183,16 @@ async function startServer() {
 
   // Mount Modular Routes
   app.use("/api/auth", authRouter);
-  app.use("/api/dev", devRouter);
+
+  // Rotas de desenvolvimento e simulação de compra ativas EXCLUSIVAMENTE fora de produção
+  if (process.env.NODE_ENV !== "production") {
+    app.use("/api/dev", devRouter);
+  } else {
+    app.use("/api/dev", (_req, res) => {
+      res.status(404).json({ error: "Endpoint de desenvolvimento desativado em ambiente de produção." });
+    });
+  }
+
   app.use("/api/itineraries", itinerariesRouter);
   app.use("/api/messages", chatRouter);
   app.use("/api/chat", chatRouter); // inclui SSE em GET /api/chat/stream/:itineraryId

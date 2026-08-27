@@ -3,10 +3,18 @@ import { eq, inArray, sql, or, isNull } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { users, itineraries, travelers, accessLogs, promoCoupons } from "../db/schema.js";
 import { authMiddleware, AuthRequest } from "../middleware/auth.js";
+import { authLimiter } from "../middleware/rateLimit.js";
 import { saveItineraryData, mapItineraryFromDb, shouldLogAccess } from "../services/itineraryStorage.js";
 import { generateUniqueReferralCode } from "./referral.js";
 
 const router = Router();
+
+// ─── Super Admin Helper ──────────────────────────────────────────────────────
+export function isSuperAdmin(user?: { id?: number; email?: string; role?: string } | null): boolean {
+  if (!user) return false;
+  const email = (user.email || "").toLowerCase().trim();
+  return user.role === "superadmin" || user.id === 1 || email === "theoked25@gmail.com";
+}
 
 router.put("/users/favorite", authMiddleware, async (req: AuthRequest, res) => {
   if (!db) return res.status(503).json({ error: "DATABASE_URL não configurada." });
@@ -53,7 +61,7 @@ router.post("/migrate-local", authMiddleware, async (req: AuthRequest, res) => {
   }
 });
 
-router.post("/traveler/validate", async (req, res) => {
+router.post("/traveler/validate", authLimiter, async (req, res) => {
   try {
     const { email } = req.body;
     if (!email || typeof email !== "string" || !email.trim()) {
@@ -143,6 +151,10 @@ router.post("/traveler/validate", async (req, res) => {
 router.post("/migrate-referral-codes", authMiddleware, async (req: AuthRequest, res) => {
   if (!db) return res.status(503).json({ error: "Banco de dados indisponível." });
 
+  if (!isSuperAdmin(req.user)) {
+    return res.status(403).json({ error: "Acesso restrito ao Super Administrador." });
+  }
+
   try {
     // Buscar todos os usuários sem código ou com códigos genéricos legados
     const usersToMigrate = await db
@@ -196,6 +208,11 @@ router.post("/migrate-referral-codes", authMiddleware, async (req: AuthRequest, 
 // ─── Gestão de Cupons Promocionais do Admin ──────────────────────────────────
 router.get("/coupons", authMiddleware, async (req: AuthRequest, res) => {
   if (!db) return res.status(503).json({ error: "Banco de dados indisponível." });
+
+  if (!isSuperAdmin(req.user)) {
+    return res.status(403).json({ error: "Acesso restrito ao Super Administrador." });
+  }
+
   try {
     const list = await db.select().from(promoCoupons).orderBy(sql`${promoCoupons.createdAt} DESC`);
     res.json({ coupons: list });
@@ -206,6 +223,11 @@ router.get("/coupons", authMiddleware, async (req: AuthRequest, res) => {
 
 router.post("/coupons", authMiddleware, async (req: AuthRequest, res) => {
   if (!db) return res.status(503).json({ error: "Banco de dados indisponível." });
+
+  if (!isSuperAdmin(req.user)) {
+    return res.status(403).json({ error: "Acesso restrito ao Super Administrador." });
+  }
+
   try {
     const { code, description, discountCents } = req.body;
     if (!code || !code.trim()) {
@@ -238,13 +260,6 @@ router.post("/coupons", authMiddleware, async (req: AuthRequest, res) => {
     res.status(500).json({ error: "Erro ao salvar cupom: " + err.message });
   }
 });
-
-// ─── Super Admin Helper ──────────────────────────────────────────────────────
-function isSuperAdmin(user?: { id?: number; email?: string; role?: string } | null): boolean {
-  if (!user) return false;
-  const email = (user.email || "").toLowerCase().trim();
-  return user.role === "superadmin" || user.id === 1 || email === "theoked25@gmail.com";
-}
 
 // ─── GET /api/admin/overview (Visão Geral do App — Exclusivo Super Admin) ────
 router.get("/overview", authMiddleware, async (req: AuthRequest, res) => {

@@ -4,6 +4,7 @@ import { eq, and, or, sql, isNull } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { users, referrals, referralInvites, promoCoupons } from "../db/schema.js";
 import { authMiddleware, AuthRequest } from "../middleware/auth.js";
+import { emailLimiter } from "../middleware/rateLimit.js";
 import { sendEmail, buildReferralInviteEmail } from "../services/email.js";
 
 const router = Router();
@@ -202,7 +203,7 @@ router.get("/stats", authMiddleware, async (req: AuthRequest, res) => {
 
 // ─── POST /api/referral/invite ───────────────────────────────────────────────
 // Envia convite por e-mail real e salva o convite na tabela referral_invites
-router.post("/invite", authMiddleware, async (req: AuthRequest, res) => {
+router.post("/invite", authMiddleware, emailLimiter, async (req: AuthRequest, res) => {
   try {
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ error: "Não autenticado" });
@@ -290,7 +291,7 @@ router.post("/invite", authMiddleware, async (req: AuthRequest, res) => {
 
 // ─── POST /api/referral/resend ────────────────────────────────────────────────
 // Reenvia convite por e-mail para um convite pendente (inviteId)
-router.post("/resend", authMiddleware, async (req: AuthRequest, res) => {
+router.post("/resend", authMiddleware, emailLimiter, async (req: AuthRequest, res) => {
   try {
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ error: "Não autenticado" });

@@ -7,10 +7,12 @@ import { nearbyPlaces, aiPromptLogs } from "../db/schema.js";
 import { sql } from "drizzle-orm";
 import { authMiddleware, AuthRequest } from "../middleware/auth.js";
 import { geminiQuotaMiddleware } from "../middleware/geminiQuota.js";
+import { aiLimiter } from "../middleware/rateLimit.js";
 import { generateContentWithRetry } from "../services/ai.js";
 import { inferActivityType } from "../utils.js";
 
 const router = Router();
+router.use(aiLimiter);
 
 function buildFallbackQuestions(hasOrigin = false, hasDates = false) {
   const questions = [];

@@ -6,6 +6,7 @@ import { eq, and } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { users, referrals, promoCoupons } from "../db/schema.js";
 import { authMiddleware, AuthRequest, JWT_SECRET, formatDbError } from "../middleware/auth.js";
+import { authLimiter } from "../middleware/rateLimit.js";
 import { sendEmail, buildPasswordSetupEmail, buildAccountVerificationEmail } from "../services/email.js";
 import { generateUniqueReferralCode } from "./referral.js";
 
@@ -112,7 +113,7 @@ async function processReferralCode(newUserId: number, referralCode?: string | nu
   }
 }
 
-router.post("/register", async (req, res) => {
+router.post("/register", authLimiter, async (req, res) => {
   try {
     const { email, password, name, referralCode: refCode } = req.body;
     if (!email || !password || !name) return res.status(400).json({ error: "Preencha todos os campos" });
@@ -185,7 +186,7 @@ router.post("/register", async (req, res) => {
   }
 });
 
-router.post("/verify-email", async (req, res) => {
+router.post("/verify-email", authLimiter, async (req, res) => {
   try {
     const { token } = req.body;
     if (!token) {
@@ -224,7 +225,7 @@ router.post("/verify-email", async (req, res) => {
   }
 });
 
-router.post("/login", async (req, res) => {
+router.post("/login", authLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).json({ error: "Preencha e-mail e senha" });
@@ -270,7 +271,7 @@ router.get("/me", authMiddleware, async (req: AuthRequest, res) => {
   }
 });
 
-router.post("/change-my-password", authMiddleware, async (req: AuthRequest, res) => {
+router.post("/change-my-password", authMiddleware, authLimiter, async (req: AuthRequest, res) => {
   try {
     const { email, currentPassword, newPassword } = req.body;
     const userId = req.user?.id;
@@ -322,7 +323,7 @@ router.post("/change-my-password", authMiddleware, async (req: AuthRequest, res)
   }
 });
 
-router.post("/gmail-signup", async (req, res) => {
+router.post("/gmail-signup", authLimiter, async (req, res) => {
   try {
     const { email, name } = req.body;
     if (!email || !name) {
@@ -405,7 +406,7 @@ router.post("/gmail-signup", async (req, res) => {
   }
 });
 
-router.post("/gmail-verify-token", async (req, res) => {
+router.post("/gmail-verify-token", authLimiter, async (req, res) => {
   try {
     const { token } = req.body;
     if (!token) {
@@ -427,7 +428,7 @@ router.post("/gmail-verify-token", async (req, res) => {
   }
 });
 
-router.post("/gmail-set-password", async (req, res) => {
+router.post("/gmail-set-password", authLimiter, async (req, res) => {
   try {
     const { token, password } = req.body;
     if (!token || !password) {
@@ -486,7 +487,7 @@ router.post("/gmail-set-password", async (req, res) => {
   }
 });
 
-router.post("/firebase-google-login", async (req, res) => {
+router.post("/firebase-google-login", authLimiter, async (req, res) => {
   try {
     const { email, name, provider } = req.body;
     if (!email) {
@@ -544,7 +545,7 @@ router.post("/firebase-google-login", async (req, res) => {
   }
 });
 
-router.post("/firebase-social-login", async (req, res) => {
+router.post("/firebase-social-login", authLimiter, async (req, res) => {
   try {
     const { email, name, provider } = req.body;
     if (!email) {
@@ -601,7 +602,7 @@ router.post("/firebase-social-login", async (req, res) => {
   }
 });
 
-router.post("/gmail-google-login", async (req, res) => {
+router.post("/gmail-google-login", authLimiter, async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) {

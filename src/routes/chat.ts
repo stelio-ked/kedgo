@@ -1,12 +1,48 @@
 import { Router, Request, Response } from "express";
 import { eq, and, inArray, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
-import { chatMessages } from "../db/schema.js";
+import { chatMessages, itineraries, travelers } from "../db/schema.js";
 import { authMiddleware, AuthRequest, JWT_SECRET } from "../middleware/auth.js";
 import jwt from "jsonwebtoken";
 import { chatUpload } from "../middleware/upload.js";
 
 const router = Router();
+
+// ─── Helper de Autorização BOLA/IDOR para Chat ───────────────────────────────
+async function canAccessItinerary(userId: number, userEmail?: string, itineraryId?: number): Promise<boolean> {
+  if (!db || !itineraryId || isNaN(itineraryId)) return false;
+  try {
+    const [itinerary] = await db
+      .select({ id: itineraries.id, ownerId: itineraries.ownerId })
+      .from(itineraries)
+      .where(eq(itineraries.id, itineraryId))
+      .limit(1);
+
+    if (!itinerary) return false;
+    if (itinerary.ownerId === userId) return true;
+
+    if (userEmail && userEmail.trim()) {
+      const cleanEmail = userEmail.trim().toLowerCase();
+      const [isTraveler] = await db
+        .select({ id: travelers.id })
+        .from(travelers)
+        .where(
+          and(
+            eq(travelers.itineraryId, itineraryId),
+            eq(sql`LOWER(TRIM(${travelers.email}))`, cleanEmail)
+          )
+        )
+        .limit(1);
+
+      if (isTraveler) return true;
+    }
+
+    return false;
+  } catch (err) {
+    console.error("[Chat Auth Check Error]", err);
+    return false;
+  }
+}
 
 // ─── Rota de Upload do Chat (Multipart) ──────────────────────────────────────
 
@@ -77,12 +113,6 @@ function broadcastToItinerary(itineraryId: number, event: string, data: unknown)
  *
  * Abre uma conexão Server-Sent Events para o itinerário especificado.
  * O token JWT é passado como query param pois EventSource não suporta headers.
- *
- * Eventos emitidos:
- *   - `connected`    : confirmação de conexão com lista inicial de mensagens
- *   - `new_message`  : nova mensagem inserida por qualquer participante
- *   - `typing`       : atualização da lista de usuários digitando
- *   - `heartbeat`    : pulso a cada 25s para manter a conexão viva
  */
 router.get("/stream/:itineraryId", async (req: Request, res: Response) => {
   if (!db) {
@@ -108,6 +138,13 @@ router.get("/stream/:itineraryId", async (req: Request, res: Response) => {
   const itId = parseInt(req.params.itineraryId);
   if (isNaN(itId)) {
     res.status(400).json({ error: "itineraryId inválido." });
+    return;
+  }
+
+  // Validação BOLA / IDOR: O usuário precisa ser o dono ou viajante do itinerário
+  const hasAccess = await canAccessItinerary(user.id, user.email, itId);
+  if (!hasAccess) {
+    res.status(403).json({ error: "Acesso negado: Você não participa deste itinerário." });
     return;
   }
 
@@ -159,6 +196,13 @@ router.get("/:itineraryId", authMiddleware, async (req: AuthRequest, res) => {
   try {
     const itId = parseInt(req.params.itineraryId);
     if (isNaN(itId)) return res.json({ messages: [], typingUsers: [] });
+
+    const userId = req.user?.id;
+    const userEmail = req.user?.email;
+    const hasAccess = await canAccessItinerary(userId, userEmail, itId);
+    if (!hasAccess) {
+      return res.status(403).json({ error: "Acesso negado: Você não participa deste itinerário." });
+    }
 
     const username = (req.query.username || "").toString().trim();
 
@@ -216,6 +260,13 @@ router.post("/typing", authMiddleware, async (req: AuthRequest, res) => {
       return res.status(400).json({ error: "Parâmetros inválidos." });
     }
 
+    const userId = req.user?.id;
+    const userEmail = req.user?.email;
+    const hasAccess = await canAccessItinerary(userId, userEmail, itId);
+    if (!hasAccess) {
+      return res.status(403).json({ error: "Acesso negado: Você não participa deste itinerário." });
+    }
+
     if (!typingParticipants[itId]) typingParticipants[itId] = {};
 
     if (isTyping) {
@@ -246,6 +297,13 @@ router.post("/", authMiddleware, async (req: AuthRequest, res) => {
     const { itineraryId, senderName, senderAvatar, recipientName, content, fileData, fileName, fileType, fileSize } = req.body;
     const itId = parseInt(itineraryId);
     if (isNaN(itId)) return res.status(400).json({ error: "Você precisa sincronizar a viagem na nuvem para usar o chat." });
+
+    const userId = req.user?.id;
+    const userEmail = req.user?.email;
+    const hasAccess = await canAccessItinerary(userId, userEmail, itId);
+    if (!hasAccess) {
+      return res.status(403).json({ error: "Acesso negado: Você não participa deste itinerário." });
+    }
 
     const [msg] = await db
       .insert(chatMessages)
