@@ -2847,9 +2847,9 @@ export default function App() {
         </div>
         
         {/* Navigation Tabs (Modern Bento segment selector) - Desktop Only (Hidden on Mobile) */}
-        <div className="w-full hidden md:flex justify-center">
-          <div className="w-full overflow-x-auto scrollbar-none py-1">
-            <div className="bg-white p-1.5 rounded-2xl border border-slate-200 w-max mx-auto shadow-xs gap-1 flex items-center shrink-0">
+        <div className="w-full hidden md:flex justify-center px-1">
+          <div className="w-full overflow-x-auto scrollbar-none py-1.5 flex items-center justify-start xl:justify-center">
+            <div className="bg-white p-1 rounded-2xl border border-slate-200 shadow-xs gap-1 flex items-center shrink-0 min-w-max mx-auto">
               {[
                 { id: "overview", label: "Informações", icon: Compass },
                 { id: "itinerary", label: "Diário de Roteiros", icon: MapPin },
@@ -2873,7 +2873,7 @@ export default function App() {
                       }
                       setActiveTab(tab.id);
                     }}
-                    className={`py-2 px-4 rounded-xl text-xs font-extrabold flex items-center gap-2 cursor-pointer transition-all whitespace-nowrap shrink-0 ${
+                    className={`py-2 px-3 xl:px-4 rounded-xl text-xs font-extrabold flex items-center gap-1.5 xl:gap-2 cursor-pointer transition-all whitespace-nowrap shrink-0 ${
                       active 
                         ? "bg-indigo-600 text-white shadow-xs" 
                         : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
@@ -2896,62 +2896,61 @@ export default function App() {
         </div>
 
         {/* Native App-like Bottom Navigation Bar for Mobile Only */}
-        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200/80 px-2 pt-2 pb-5 flex items-center z-50 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] rounded-t-2xl overflow-hidden">
-          <div className="w-full overflow-x-auto scrollbar-none flex justify-center">
-            <div className="flex items-center justify-center gap-1.5 px-2 min-w-max">
+        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200/80 px-2 pt-1.5 pb-5 flex items-center z-50 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] rounded-t-2xl">
+          <div className="w-full overflow-x-auto scrollbar-none flex items-center justify-start touch-pan-x px-1">
+            <div className="flex items-center gap-1 min-w-max mx-auto py-0.5">
               {[
-
-              { id: "overview", label: "Infos", icon: Compass },
-              { id: "itinerary", label: "Diário", icon: MapPin },
-              { id: "costs", label: "Finanças", icon: DollarSign },
-              { id: "documents", label: "Cofre", icon: FileText },
-              { id: "calendar", label: "Agenda", icon: CalendarIcon },
-              { id: "chat", label: "Chat", icon: MessageCircle },
-              { id: "settings", label: "Config", icon: Settings },
-              ...(isAdmin ? [{ id: "admin", label: "Admin", icon: ShieldCheck }] : [])
-            ].map((tab) => {
-              const Icon = tab.icon;
-              const active = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => {
-                    if (!planAccess.canAccessTab(tab.id)) {
-                      setBlockedFeatureName(`aba ${tab.label}`);
-                      setShowTrialExpiredModal(true);
-                      return;
-                    }
-                    setActiveTab(tab.id);
-                  }}
-                  className="flex flex-col items-center gap-1 py-0.5 px-2 text-center cursor-pointer transition-all relative shrink-0"
-                >
-                  <div className={`p-1.5 rounded-xl transition-all relative ${
-                    active 
-                      ? "bg-indigo-50 text-indigo-600 scale-105" 
-                      : "text-slate-400 hover:text-slate-600"
-                  }`}>
-                    <Icon className="w-5 h-5 shrink-0" />
-                    {tab.id === "chat" && unreadChatCount > 0 && (
-                      <span className="absolute -top-1 -right-1 bg-rose-500 text-white font-extrabold text-[8px] px-1 min-w-[14px] h-3.5 rounded-full flex items-center justify-center border border-white">
-                        {unreadChatCount}
-                      </span>
+                { id: "overview", label: "Infos", icon: Compass },
+                { id: "itinerary", label: "Diário", icon: MapPin },
+                { id: "costs", label: "Finanças", icon: DollarSign },
+                { id: "documents", label: "Cofre", icon: FileText },
+                { id: "calendar", label: "Agenda", icon: CalendarIcon },
+                { id: "chat", label: "Chat", icon: MessageCircle },
+                { id: "settings", label: "Config", icon: Settings },
+                ...(isAdmin ? [{ id: "admin", label: "Admin", icon: ShieldCheck }] : [])
+              ].map((tab) => {
+                const Icon = tab.icon;
+                const active = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => {
+                      if (!planAccess.canAccessTab(tab.id)) {
+                        setBlockedFeatureName(`aba ${tab.label}`);
+                        setShowTrialExpiredModal(true);
+                        return;
+                      }
+                      setActiveTab(tab.id);
+                    }}
+                    className="flex flex-col items-center gap-1 py-0.5 px-2 text-center cursor-pointer transition-all relative shrink-0 min-w-[56px]"
+                  >
+                    <div className={`p-1.5 rounded-xl transition-all relative ${
+                      active 
+                        ? "bg-indigo-50 text-indigo-600 scale-105" 
+                        : "text-slate-400 hover:text-slate-600"
+                    }`}>
+                      <Icon className="w-5 h-5 shrink-0" />
+                      {tab.id === "chat" && unreadChatCount > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-rose-500 text-white font-extrabold text-[8px] px-1 min-w-[14px] h-3.5 rounded-full flex items-center justify-center border border-white">
+                          {unreadChatCount}
+                        </span>
+                      )}
+                    </div>
+                    <span className={`text-[9px] tracking-tight transition-all font-extrabold ${
+                      active ? "text-indigo-600" : "text-slate-400"
+                    }`}>
+                      {tab.label}
+                    </span>
+                    {active && (
+                      <motion.div 
+                        layoutId="activeTabIndicator" 
+                        className="absolute -bottom-2.5 w-6 h-1 bg-indigo-600 rounded-full"
+                        transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                      />
                     )}
-                  </div>
-                  <span className={`text-[9px] tracking-tight transition-all font-extrabold ${
-                    active ? "text-indigo-600" : "text-slate-400"
-                  }`}>
-                    {tab.label}
-                  </span>
-                  {active && (
-                    <motion.div 
-                      layoutId="activeTabIndicator" 
-                      className="absolute -bottom-2.5 w-6 h-1 bg-indigo-600 rounded-full"
-                      transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                    />
-                  )}
-                </button>
-              );
-            })}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
