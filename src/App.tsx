@@ -2826,7 +2826,7 @@ export default function App() {
       )}
 
       {/* MAIN LAYOUT WRAPPER (Optimized spacing for mobile layout and sticky bottom bar protection) */}
-      <main className="grow max-w-7xl w-full mx-auto p-3 sm:p-5 md:p-8 space-y-4 md:space-y-6 pb-24 md:pb-8">
+      <main className="grow max-w-7xl w-full mx-auto p-3 sm:p-5 md:p-8 space-y-4 md:space-y-6 pb-32 md:pb-8">
         
         {/* Mobile-Only Friendly Active Trip and Welcome Indicator */}
         <div className="sm:hidden bg-linear-to-r from-indigo-50/90 to-indigo-100/50 backdrop-blur-md rounded-2xl border border-indigo-150/65 p-3.5 flex items-center justify-between shadow-xs">
