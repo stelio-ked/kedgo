@@ -1042,22 +1042,6 @@ export default function Header({
                       </div>
                     </div>
                   </div>
-
-                  <div className="flex items-center gap-3 pt-3">
-                    <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold">↻</div>
-                    <div className="flex-1">
-                      <p className="text-xs font-bold text-slate-800">Migrar para Servidor Seguro (PostgreSQL)</p>
-                      <p className="text-[10px] text-slate-500">Salva os dados locais na base centralizada para acesso em outros dispositivos.</p>
-                    </div>
-                    {onMigrateData && (
-                      <button 
-                         onClick={onMigrateData}
-                         className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[10px] font-bold shadow-xs whitespace-nowrap"
-                      >
-                         Sincronizar Cloud
-                      </button>
-                    )}
-                  </div>
                 </div>
 
                 <div className="space-y-2">
